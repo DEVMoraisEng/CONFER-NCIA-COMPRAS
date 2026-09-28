@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light only">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1e3f58">
+<title>Conferência OC × NF · Morais Engenharia</title>
+<link rel="icon" href="https://devmoraiseng.github.io/PORTAL-MORAIS/img/logo-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{color-scheme:light;
+  --azul:#295778;--azul-esc:#1e3f58;--teal:#8FDCD2;--verde:#2a9d5c;--verde-btn:#4cd964;--verde-esc:#1a6b40;
+  --bg:#EAF1F3;--bg2:#F5F9FA;--bg3:#dceaef;--border:#b8d0da;--border2:#d0e4ec;
+  --text:#1a3347;--text3:#5a8099;--text4:#8aacbb;--branco:#fff;
+  --ok:#1a6b40;--ok-bg:#e6f6ec;--at:#8a5a00;--at-bg:#fff4d6;--div:#b3261e;--div-bg:#fdecea}
+*{box-sizing:border-box}
+html{background:var(--bg);min-height:100%}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.45}
+.cond{font-family:'Barlow Condensed',Inter,sans-serif}
+.wrap{max-width:1300px;margin:0 auto;padding:0 20px}
+header{background:linear-gradient(120deg,var(--azul-esc),var(--azul))}
+header::after{content:"";display:block;height:4px;background:linear-gradient(90deg,var(--verde-btn),var(--teal))}
+.hbar{display:flex;align-items:center;gap:13px;padding:14px 0;flex-wrap:wrap}
+.logo{background:#fff;border-radius:9px;padding:5px 10px;display:inline-flex}.logo img{height:38px;display:block}
+.htitle{font-family:'Barlow Condensed';font-weight:800;font-size:23px;color:#fff;text-transform:uppercase;letter-spacing:.5px;line-height:1}
+.hsub{color:var(--teal);font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.hspace{flex:1}
+.user{display:flex;align-items:center;gap:10px;color:#fff;font-size:13.5px;font-weight:600}
+.hbtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer;text-decoration:none}
+.hbtn:hover{background:rgba(255,255,255,.22)}
+main.wrap{padding:20px 20px 60px}
+.sec{display:flex;align-items:center;gap:10px;background:var(--bg3);border-left:4px solid var(--verde);border-radius:8px;padding:9px 14px;margin:0 0 14px}
+.sec .cond{font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--azul-esc)}
+.sec .dir{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.painel{background:var(--branco);border:1px solid var(--border2);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.bloqueio{background:var(--div-bg);border:1px solid #f3b8b2;color:var(--div);border-radius:10px;padding:14px 16px;font-weight:600;margin-bottom:16px}
+
+/* entrada */
+.lados{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.lados{grid-template-columns:1fr}}
+.lado h3{margin:0 0 8px;font-family:'Barlow Condensed';font-size:17px;font-weight:800;color:var(--azul-esc);text-transform:uppercase;letter-spacing:.4px}
+.lado h3 small{font-family:Inter;font-size:11.5px;font-weight:500;color:var(--text3);text-transform:none;letter-spacing:0;margin-left:6px}
+.solta{border:2px dashed var(--border);border-radius:10px;background:var(--bg2);padding:20px 14px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.solta:hover,.solta.sobre,.solta:focus-visible{border-color:var(--verde);background:#f0faf4;outline:none}
+.solta b{display:block;font-size:14px;color:var(--azul-esc)}
+.solta span{font-size:12px;color:var(--text3)}
+.arqs{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.arq{display:flex;align-items:center;gap:9px;border:1px solid var(--border2);border-radius:8px;padding:7px 10px;background:#fff;font-size:13px}
+.arq .tp{font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;background:var(--bg3);color:var(--azul-esc);text-transform:uppercase}
+.arq .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.arq .est{font-size:12px;color:var(--text3);white-space:nowrap}
+.arq .est.err{color:var(--div);font-weight:600;white-space:normal}
+.arq .est.ok{color:var(--ok);font-weight:600}
+.arq button{border:0;background:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:4px}
+.arq button:hover{background:var(--bg3);color:var(--div)}
+.arq .refazer{font-size:11.5px;font-weight:700;color:var(--azul);text-decoration:underline}
+.opcoes{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)}
+.opcoes label{font-size:12.5px;color:var(--text3);display:flex;align-items:center;gap:7px;cursor:pointer}
+.opcoes .campo{display:flex;flex-direction:column;gap:3px}
+.opcoes .campo span{font-size:11px;font-weight:700;color:var(--text3)}
+.opcoes input[type=text]{width:90px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;font:inherit;font-size:13.5px}
+.acoes{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.btn{background:var(--verde);color:#fff;border:0;border-radius:9px;padding:11px 22px;font:inherit;font-size:14.5px;font-weight:700;cursor:pointer}
+.btn:hover{background:var(--verde-esc)}
+.btn:disabled{background:#b9c7cd;cursor:not-allowed}
+.btn.sec2{background:#fff;color:var(--azul-esc);border:1px solid var(--border)}
+.btn.sec2:hover{background:var(--bg2)}
+.btn.peq{padding:7px 12px;font-size:12.5px;border-radius:7px}
+.btn:focus-visible,.chip:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+.progresso{margin-top:12px;font-size:13px;color:var(--text3);min-height:18px}
+.progresso.err{color:var(--div);font-weight:600}
+
+/* veredito */
+.veredito{border-radius:12px;padding:18px 20px;margin-bottom:18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;border:1px solid}
+.veredito.ok{background:var(--ok-bg);border-color:#b7e2c6}
+.veredito.div{background:var(--div-bg);border-color:#f3b8b2}
+.veredito .selo{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-family:'Barlow Condensed';font-weight:800;font-size:28px;color:#fff}
+.veredito.ok .selo{background:var(--ok)}.veredito.div .selo{background:var(--div)}
+.veredito h2{margin:0;font-family:'Barlow Condensed';font-size:26px;font-weight:800;line-height:1.1;color:var(--azul-esc)}
+.veredito p{margin:4px 0 0;color:var(--text3);font-size:13px}
+.veredito .dif{text-align:right}
+.veredito .dif b{display:block;font-family:'Barlow Condensed';font-size:30px;font-weight:800;line-height:1}
+.veredito.ok .dif b{color:var(--ok)}.veredito.div .dif b{color:var(--div)}
+.veredito .dif span{font-size:11.5px;color:var(--text3)}
+@media(max-width:700px){.veredito{grid-template-columns:auto 1fr}.veredito .dif{grid-column:1/-1;text-align:left}}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:820px){.kpis{grid-template-columns:1fr 1fr}}
+.kpi{background:#fff;border:1px solid var(--border2);border-radius:10px;padding:12px 14px}
+.kpi .lab{font-size:11px;font-weight:700;color:var(--text3)}
+.kpi .val{font-family:'Barlow Condensed';font-size:26px;font-weight:800;color:var(--azul-esc);line-height:1.1}
+.kpi .sub{font-size:12px;color:var(--text3)}
+
+.duas{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+@media(max-width:980px){.duas{grid-template-columns:1fr}}
+.decomp{width:100%;border-collapse:collapse;font-size:13.5px}
+.decomp td{padding:7px 4px;border-bottom:1px solid var(--border2)}
+.decomp td.v{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.decomp tr.tot td{border-top:2px solid var(--azul-esc);border-bottom:0;font-weight:800;color:var(--azul-esc)}
+.decomp .neg{color:var(--div)}.decomp .pos{color:#9a4b00}.decomp .zero{color:var(--text4);font-weight:500}
+.decomp td small{display:block;color:var(--text3);font-size:11.5px;font-weight:400}
+.cab{width:100%;border-collapse:collapse;font-size:13px}
+.cab th{text-align:left;font-size:11px;color:var(--text3);font-weight:700;padding:5px 6px;border-bottom:1px solid var(--border2)}
+.cab td{padding:6px;border-bottom:1px solid var(--border2);vertical-align:top;word-break:break-word}
+.cab td:first-child{color:var(--text3);font-weight:600;width:28%}
+.cab tr.div td{background:var(--div-bg)}.cab tr.at td{background:var(--at-bg)}
+.alertas{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.alertas li{font-size:12.5px;padding:7px 10px;border-radius:7px;background:var(--at-bg);color:var(--at);border-left:3px solid #e0a800}
+.alertas li.div{background:var(--div-bg);color:var(--div);border-left-color:var(--div)}
+
+/* espelho OC × NF */
+.filtros{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:20px;padding:5px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--azul-esc);border-color:var(--azul-esc);color:#fff}
+.chip .n{opacity:.7;margin-left:4px}
+.espelho-box{overflow-x:auto;border:1px solid var(--border2);border-radius:10px;background:#fff}
+table.espelho{width:100%;border-collapse:collapse;font-size:12.8px;min-width:1080px}
+.espelho thead th{position:sticky;top:0;background:var(--bg2);font-size:10.5px;font-weight:800;color:var(--text3);text-align:left;padding:8px 7px;border-bottom:1px solid var(--border);white-space:nowrap}
+.espelho thead tr.grupo th{font-family:'Barlow Condensed';font-size:14px;color:var(--azul-esc);letter-spacing:.3px;border-bottom:0;padding-bottom:0}
+.espelho td{padding:8px 7px;border-bottom:1px solid var(--border2);vertical-align:top}
+.espelho td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.espelho td.meio{background:var(--bg2);border-left:1px solid var(--border2);border-right:1px solid var(--border2);width:210px}
+.espelho tr.ok td:first-child{box-shadow:inset 4px 0 var(--ok)}
+.espelho tr.at td:first-child{box-shadow:inset 4px 0 #e0a800}
+.espelho tr.div td:first-child{box-shadow:inset 4px 0 var(--div)}
+.espelho .desc{font-weight:600;color:var(--azul-esc)}
+.espelho .cod{font-size:11px;color:var(--text4)}
+.espelho .vazio{color:var(--text4);font-style:italic}
+.espelho td.difere{color:var(--div);font-weight:700}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}.tag.at{background:var(--at-bg);color:var(--at)}.tag.div{background:var(--div-bg);color:var(--div)}
+.msgs{margin:5px 0 0;padding:0;list-style:none;font-size:11.8px;line-height:1.35;color:var(--text)}
+.msgs li{margin-top:3px}
+.msgs li.div{color:var(--div);font-weight:600}.msgs li.at{color:var(--at)}.msgs li.info{color:var(--text3)}
+.imp{font-size:11.5px;font-weight:800;margin-top:4px}
+.imp.neg{color:var(--div)}.imp.pos{color:#9a4b00}
+.espelho select{max-width:100%;font:inherit;font-size:11.5px;padding:3px 5px;border:1px solid var(--border);border-radius:6px;margin-top:6px;background:#fff;color:var(--text)}
+.nada{padding:22px;text-align:center;color:var(--text3)}
+
+/* itens lidos (editáveis) */
+details.lidos{margin-top:4px}
+details.lidos summary{cursor:pointer;font-weight:700;color:var(--azul);font-size:13px;padding:6px 0}
+.lidos-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+@media(max-width:980px){.lidos-grid{grid-template-columns:1fr}}
+.lidos-grid h4{margin:0 0 6px;font-size:13px;color:var(--azul-esc)}
+.tl-box{overflow-x:auto;border:1px solid var(--border2);border-radius:8px}
+table.tl{width:100%;border-collapse:collapse;font-size:12px}
+.tl th{background:var(--bg2);text-align:left;font-size:10.5px;color:var(--text3);padding:6px;white-space:nowrap}
+.tl td{padding:4px 6px;border-top:1px solid var(--border2);vertical-align:middle}
+.tl td.num{text-align:right}
+.tl input{width:88px;text-align:right;font:inherit;font-size:12px;padding:3px 5px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text)}
+.tl input:hover{border-color:var(--border)}
+.tl input:focus{border-color:var(--azul);background:#fff}
+.tl tr.suspeito td{background:var(--at-bg)}
+.nota{font-size:12px;color:var(--text3);margin:8px 0 0}
+
+/* histórico */
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hist li{display:flex;gap:10px;align-items:center;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;background:#fff;font-size:13px;cursor:pointer}
+.hist li:hover{border-color:var(--azul)}
+.hist .q{color:var(--text3);font-size:12px;white-space:nowrap}
+.hist .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist .d{font-weight:700;white-space:nowrap}
+.hist .d.ok{color:var(--ok)}.hist .d.div{color:var(--div)}
+.login{max-width:430px;margin:30px auto}
+.login h2{margin:0 0 4px;font-family:'Barlow Condensed';font-size:24px;font-weight:800;color:var(--azul-esc)}
+.login p{margin:0 0 14px;color:var(--text3);font-size:13px}
+.login label.cp{display:block;font-size:12px;font-weight:700;color:var(--text3);margin:10px 0 4px}
+.login input[type=text],.login input[type=password]{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:14.5px}
+.login .linha{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.login .linha label{font-size:12.5px;color:var(--text3);display:flex;gap:6px;align-items:center}
+.esconde{display:none!important}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:50}
+
+@media print{
+  header .hbtn,.sec .dir,#entrada,#painel-hist,.filtros,.espelho select,details.lidos,.toast{display:none!important}
+  body,html{background:#fff}
+  .painel,.kpi,.espelho-box{border-color:#ccc}
+  table.espelho{min-width:0;font-size:10.5px}
+  .espelho thead th{position:static}
+  main.wrap{padding:8px 0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap hbar">
+    <span class="logo"><img src="https://devmoraiseng.github.io/PORTAL-MORAIS/img/logo.png" alt="Morais Engenharia"></span>
+    <div>
+      <div class="htitle">Conferência OC × NF</div>
+      <div class="hsub">Compras · ordem de compra contra nota fiscal</div>
+    </div>
+    <div class="hspace"></div>
+    <div class="user"><span id="u-nome"></span>
+      <a class="hbtn" href="https://devmoraiseng.github.io/PORTAL-MORAIS/">Voltar ao portal</a></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="bloqueio" class="bloqueio esconde"></div>
+
+  <section id="p-login" class="painel login esconde">
+    <h2>Entrar</h2>
+    <p>Use o mesmo login e senha do Portal Morais.</p>
+    <form id="f-login" autocomplete="on">
+      <label class="cp" for="lg">Login</label><input type="text" id="lg" autocomplete="username" required>
+      <label class="cp" for="sn">Senha</label><input type="password" id="sn" autocomplete="current-password" required>
+      <div class="linha"><label><input type="checkbox" id="manter" checked> Manter conectado</label>
+        <button class="btn" id="b-entrar" type="submit">Entrar</button></div>
+      <div class="progresso err" id="login-erro" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <section id="entrada" class="painel">
+    <div class="lados">
+      <div class="lado">
+        <h3>Ordem de compra <small>a nossa — PDF ou foto</small></h3>
+        <div class="solta" id="z-OC" tabindex="0" role="button" aria-label="Escolher arquivos da ordem de compra">
+          <b>Arraste a OC aqui</b><span>ou clique para escolher · PDF, JPG ou PNG</span>
+        </div>
+        <input type="file" id="f-OC" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf" multiple class="esconde">
+        <ul class="arqs" id="l-OC"></ul>
+      </div>
+      <div class="lado">
+        <h3>Nota fiscal <small>do fornecedor — XML, PDF ou foto</small></h3>
+        <div class="solta" id="z-NF" tabindex="0" role="button" aria-label="Escolher arquivos da nota fiscal">
+          <b>Arraste a NF aqui</b><span>ou clique para escolher · o XML é lido sem IA e sem erro</span>
+        </div>
+        <input type="file" id="f-NF" accept="application/pdf,text/xml,application/xml,.xml,image/jpeg,image/png,image/webp,.pdf" multiple class="esconde">
+        <ul class="arqs" id="l-NF"></ul>
+      </div>
+    </div>
+    <div class="opcoes">
+      <div class="campo"><span>Tolerância no total (R$)</span><input type="text" id="tol" value="0,05" inputmode="decimal"></div>
+      <label><input type="checkbox" id="forcar-img"> Ler PDFs como imagem (use quando a leitura vier errada)</label>
+      <div class="acoes">
+        <button class="btn sec2" id="b-limpar" type="button">Nova conferência</button>
+        <button class="btn" id="b-conferir" type="button">Conferir</button>
+      </div>
+    </div>
+    <div class="progresso" id="progresso" aria-live="polite"></div>
+  </section>
+
+  <section id="resultado" class="esconde"></section>
+
+  <section id="painel-hist" class="painel">
+    <div class="sec" style="margin-bottom:10px"><span class="cond">Conferências recentes</span>
+      <div class="dir"><button class="btn sec2 peq" id="b-hist-limpar" type="button">Limpar lista</button></div></div>
+    <ul class="hist" id="hist"></ul>
+    <p class="nota">Ficam só neste computador (as últimas 30). Os arquivos não são guardados, só o resultado.</p>
+  </section>
+</main>
+
+<script>
+/* =====================================================================
+ * CONFERÊNCIA OC × NF — equipe de Compras
+ *
+ * Como funciona:
+ *   1. XML da NF-e é lido aqui mesmo, sem IA (é o dado oficial, sem erro).
+ *   2. PDF com texto: o texto é extraído aqui (pdf.js) e vai para a IA
+ *      organizar em itens. Página sem texto (escaneada) vai como imagem.
+ *   3. Foto/imagem vai como imagem.
+ *   4. A IA só LÊ os documentos e sugere quais itens são o mesmo produto.
+ *      Toda a conta (falta, sobra, preço, quantidade, total) é feita aqui,
+ *      em JavaScript, para o resultado ser conferível linha a linha.
+ *
+ * A chave da OpenAI NÃO fica aqui: este repositório é público. Ela mora nas
+ * Propriedades do Script do Apps Script AUT-CONFERENCIA-NF, que confere o
+ * login do portal antes de chamar a IA.
+ * ===================================================================== */
+
+const API    = "COLE_AQUI_A_URL_DA_IMPLANTACAO_DO_APPS_SCRIPT";   // .../exec do AUT-CONFERENCIA-NF
+const PORTAL = "https://devmoraiseng.github.io/PORTAL-MORAIS/";
+const KEY    = "morais_sessao";                 // mesma sessão do portal (mesmo endereço github.io)
+/* Login do próprio portal (PORTAL-LEITURA). Usado só quando esta aba não tem
+   a sessão: quem entrou no portal sem "manter conectado" guarda a sessão no
+   sessionStorage daquela aba, e o botão do portal abre esta página em aba
+   nova (noopener), que não herda esse sessionStorage. */
+const PORTAL_API = "https://script.google.com/macros/s/AKfycbwvMnVHZd7y5k-GP8_Dg9zkWyD2fqqH8UI4gaXsQ0iJnm9QNSsyyUhODFMyMW6BfAk/exec";
+const CHAVE  = "CONFERÊNCIA DE NF";             // opção da coluna ACESSOS do banco LOGINS
+const MAX_PAG = 12;
+const HIST_KEY = "conf_nf_historico_v1";
+
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* ---------------- sessão (a mesma do portal) ---------------- */
+function sessao(){ try{ return JSON.parse(localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||"null"); }catch(e){ return null; } }
+let S = sessao();
+if(S && !S.token) S = null;
+function pedirLogin(msg){
+  S = null;
+  ["entrada","resultado","painel-hist","bloqueio"].forEach(id=>document.getElementById(id).classList.add("esconde"));
+  document.getElementById("p-login").classList.remove("esconde");
+  document.getElementById("login-erro").textContent = msg||"";
+  document.getElementById("lg").focus();
+}
+const nz = x => String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
+function podeAcessar(s){
+  if(!s) return false;
+  if(["ADM","MASTER","TESTES"].indexOf(String(s.tipo||"").toUpperCase())>=0) return true;
+  return (s.acessos||[]).some(a => nz(a)===nz(CHAVE));
+}
+
+/* ---------------- utilidades ---------------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const brl = v => v==null||isNaN(v) ? "—" : Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const brlU = v => v==null||isNaN(v) ? "—" : "R$ " + Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:4});
+const fq = v => v==null||isNaN(v) ? "—" : Number(v).toLocaleString("pt-BR",{maximumFractionDigits:4});
+const sinalBrl = v => (v>0?"+":v<0?"−":"") + brl(Math.abs(v));
+const r2 = v => Math.round((Number(v)+Number.EPSILON)*100)/100;
+function num(v){
+  if(v==null||v==="") return null;
+  if(typeof v==="number") return isFinite(v)?v:null;
+  let s=String(v).trim().replace(/[R$\s]/g,"");
+  if(/,\d+$/.test(s) || (s.indexOf(",")>=0 && s.indexOf(".")>=0)) s=s.replace(/\./g,"").replace(",",".");
+  else s=s.replace(",",".");
+  const n=parseFloat(s); return isFinite(n)?n:null;
+}
+const soDig = s => String(s||"").replace(/\D/g,"");
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
+function hojeBR(d){ return (d||new Date()).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+
+/* ---------------- chamada ao Apps Script ---------------- */
+const MSG = {
+  SESSAO_INVALIDA: "Sua sessão expirou. Entre de novo.",
+  SEM_ACESSO: "Seu login não tem o acesso \""+CHAVE+"\". Peça ao ADM para liberar no banco LOGINS.",
+  SEM_CHAVE_OPENAI: "O Apps Script está sem a chave da OpenAI (propriedade OPENAI_API_KEY).",
+  BACKEND_SEM_SESSION_SECRET: "O Apps Script está sem o SESSION_SECRET (tem que ser igual ao do portal).",
+  LIMITE_ATINGIDO: "Limite de leituras das últimas 6 horas atingido para o seu login.",
+  CHAVE_OPENAI_INVALIDA: "A chave da OpenAI foi recusada (revogada ou digitada errada no Apps Script).",
+  OPENAI_SEM_CREDITO: "A conta da OpenAI está sem crédito.",
+  OPENAI_OCUPADA: "A OpenAI está sobrecarregada agora. Tente de novo em um minuto.",
+  MODELO_INVALIDO: "O modelo configurado em OPENAI_MODELO não existe para essa chave.",
+  RESPOSTA_CORTADA: "O documento é grande demais para uma leitura. Separe as páginas em mais de um arquivo.",
+  ARQUIVO_VAZIO: "Não consegui tirar nada do arquivo."
+};
+async function api(payload){
+  if(API.indexOf("COLE_AQUI")===0) throw new Error("Falta colar a URL do Apps Script em const API, no index.html.");
+  let r;
+  try{
+    r = await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({},payload,{token:S.token}))});
+  }catch(e){ throw new Error("Sem conexão com o Apps Script. Confira a internet."); }
+  const txt = await r.text(); let j;
+  try{ j=JSON.parse(txt); }catch(e){ throw new Error("O Apps Script não respondeu JSON — confira se a implantação está como \"Qualquer pessoa\"."); }
+  if(!j.ok){
+    if(j.erro==="SESSAO_INVALIDA"){ try{ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); }catch(_){} pedirLogin(MSG.SESSAO_INVALIDA); }
+    const e=new Error(MSG[j.erro] || ("Erro do servidor: "+j.erro+(j.detalhe?" — "+j.detalhe:""))); e.codigo=j.erro; throw e; }
+  return j;
+}
+
+/* ===================== LEITURA DOS ARQUIVOS ===================== */
+const ARQ = { OC: [], NF: [] };
+let seq = 0;
+
+function tipoArquivo(f){
+  const n=(f.name||"").toLowerCase();
+  if(n.endsWith(".xml") || /xml/.test(f.type)) return "xml";
+  if(n.endsWith(".pdf") || f.type==="application/pdf") return "pdf";
+  if(/^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/.test(n)) return "img";
+  return null;
+}
+function adicionar(lado, files){
+  for(const f of files){
+    const tp = tipoArquivo(f);
+    if(!tp){ toast("Formato não aceito: "+f.name); continue; }
+    if(lado==="OC" && tp==="xml"){ toast("XML é da nota fiscal — coloque do lado da NF."); continue; }
+    ARQ[lado].push({ id:++seq, file:f, nome:f.name, tipo:tp, estado:"novo", doc:null, erro:"", modo:"" });
+  }
+  listar(lado);
+}
+function listar(lado){
+  $("l-"+lado).innerHTML = ARQ[lado].map(a => {
+    let est = "", cls = "";
+    if(a.estado==="novo") est="pronto para ler";
+    else if(a.estado==="lendo") est=esc(a.modo||"lendo…");
+    else if(a.estado==="ok"){ est=(a.doc.itens.length)+" itens"+(a.modo?" · "+esc(a.modo):""); cls="ok"; }
+    else if(a.estado==="erro"){ est=esc(a.erro); cls="err"; }
+    const refazer = (a.estado==="ok"||a.estado==="erro") && a.tipo==="pdf"
+      ? `<button class="refazer" data-refazer="${lado}:${a.id}" title="Ler de novo esta página como imagem">ler como imagem</button>` : "";
+    return `<li class="arq"><span class="tp">${a.tipo}</span><span class="nm" title="${esc(a.nome)}">${esc(a.nome)}</span>
+      <span class="est ${cls}">${est}</span>${refazer}
+      <button data-tirar="${lado}:${a.id}" aria-label="Tirar ${esc(a.nome)}" title="Tirar">×</button></li>`;
+  }).join("");
+}
+
+/* ---- XML da NF-e: leitura exata, sem IA ---- */
+function lerXmlNFe(txt){
+  const d = new DOMParser().parseFromString(txt,"application/xml");
+  if(d.getElementsByTagName("parsererror").length) throw new Error("XML inválido");
+  const um = (el,tag) => el ? el.getElementsByTagNameNS("*",tag)[0] || null : null;
+  const tx = (el,tag) => { const x=um(el,tag); return x ? x.textContent.trim() : null; };
+  const inf = um(d,"infNFe"); if(!inf) throw new Error("Não é XML de NF-e (não achei infNFe)");
+  const ide=um(inf,"ide"), emit=um(inf,"emit"), dest=um(inf,"dest"), tot=um(um(inf,"total"),"ICMSTot");
+  const itens=[]; let pedido=null;
+  Array.from(inf.getElementsByTagNameNS("*","det")).forEach(det=>{
+    const p=um(det,"prod"); if(!p) return;
+    const ipiTrib = um(um(det,"IPI"),"IPITrib");
+    if(!pedido) pedido = tx(p,"xPed");
+    itens.push({ codigo:tx(p,"cProd"), descricao:tx(p,"xProd")||"", unidade:tx(p,"uCom"),
+      quantidade:num(tx(p,"qCom")), valor_unitario:num(tx(p,"vUnCom")), valor_total:num(tx(p,"vProd")),
+      valor_desconto:num(tx(p,"vDesc")), valor_ipi: ipiTrib?num(tx(ipiTrib,"vIPI")):null, pagina:null });
+  });
+  const infCpl = tx(um(inf,"infAdic"),"infCpl") || "";
+  if(!pedido){ const m = infCpl.match(/(?:pedido|ped\.?|o\.?\s?c\.?|ordem de compra)\D{0,12}(\d[\d\/.-]{1,20})/i); if(m) pedido=m[1]; }
+  const cnpj = tx(emit,"CNPJ") || tx(emit,"CPF");
+  return {
+    tipo_documento:"NOTA_FISCAL", numero:tx(ide,"nNF"), serie:tx(ide,"serie"),
+    data_emissao:(tx(ide,"dhEmi")||tx(ide,"dEmi")||"").slice(0,10).split("-").reverse().join("/")||null,
+    chave_acesso:(inf.getAttribute("Id")||"").replace(/^NFe/,"")||null,
+    fornecedor_nome:tx(emit,"xNome"), fornecedor_cnpj:cnpj, comprador_nome:tx(dest,"xNome"),
+    pedido_referenciado:pedido, obra_ou_destino:null, itens,
+    totais:{ valor_produtos:num(tx(tot,"vProd")), frete:num(tx(tot,"vFrete")), seguro:num(tx(tot,"vSeg")),
+      desconto:num(tx(tot,"vDesc")), ipi:num(tx(tot,"vIPI")), icms_st:num(tx(tot,"vST")),
+      outras_despesas:num(tx(tot,"vOutro")), valor_total:num(tx(tot,"vNF")) },
+    qtd_itens_declarada:itens.length, legibilidade:"boa", alertas:[]
+  };
+}
+
+/* ---- PDF: texto por linha (pdf.js) ou imagem da página ---- */
+function montarLinhas(items){
+  const its = items.filter(x=>x.str && x.str.trim()).map(x=>({s:x.str, x:x.transform[4], y:x.transform[5], w:x.width||0}));
+  its.sort((a,b)=> (b.y-a.y) || (a.x-b.x));
+  const linhas=[];
+  for(const it of its){
+    const l = linhas[linhas.length-1];
+    if(l && Math.abs(l.y-it.y)<=2.5) l.its.push(it); else linhas.push({y:it.y, its:[it]});
+  }
+  return linhas.map(l=>{
+    l.its.sort((a,b)=>a.x-b.x);
+    let out="", fim=null;
+    for(const it of l.its){
+      if(fim!=null){ const gap=it.x-fim; out += gap>8 ? " | " : gap>1 ? " " : ""; }
+      out += it.s; fim = it.x+it.w;
+    }
+    return out;
+  }).join("\n");
+}
+function textoBom(t){
+  const semEsp = t.replace(/\s|\|/g,"");
+  if(semEsp.length < 120) return false;
+  if((t.match(/\d/g)||[]).length < 20) return false;
+  const bons = (semEsp.match(/[0-9A-Za-zÀ-ÿ.,\/%$:()-]/g)||[]).length;
+  return bons/semEsp.length > 0.8;          // fonte sem mapa de caracteres vira lixo: vai como imagem
+}
+function canvasParaJpeg(cv){ return cv.toDataURL("image/jpeg",0.82); }
+async function renderPagina(pg){
+  const v1 = pg.getViewport({scale:1});
+  const esc_ = Math.max(1, Math.min(3, 1700 / v1.width));
+  const vp = pg.getViewport({scale:esc_});
+  const cv = document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+  const ctx = cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height);
+  await pg.render({canvasContext:ctx, viewport:vp}).promise;
+  return canvasParaJpeg(cv);
+}
+async function lerPdf(file, forcarImagem){
+  if(!window.pdfjsLib) throw new Error("Não carregou o leitor de PDF (pdf.js). Recarregue a página.");
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+  const n = Math.min(pdf.numPages, MAX_PAG);
+  const textos=[], imagens=[], pgImg=[];
+  for(let i=1;i<=n;i++){
+    const pg = await pdf.getPage(i);
+    let t = "";
+    if(!forcarImagem){ t = montarLinhas((await pg.getTextContent()).items); }
+    if(!forcarImagem && textoBom(t)) textos.push("--- PÁGINA "+i+" ---\n"+t);
+    else { imagens.push(await renderPagina(pg)); pgImg.push(i); }
+  }
+  return { texto:textos.join("\n\n"), imagens, total:pdf.numPages, lidas:n, pgImg };
+}
+async function lerImagem(file){
+  const img = await new Promise((ok,falha)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=()=>falha(new Error("Imagem ilegível")); i.src=URL.createObjectURL(file); });
+  const k = Math.min(1, 2000/Math.max(img.naturalWidth,img.naturalHeight));
+  const cv=document.createElement("canvas"); cv.width=Math.round(img.naturalWidth*k); cv.height=Math.round(img.naturalHeight*k);
+  const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(img,0,0,cv.width,cv.height);
+  URL.revokeObjectURL(img.src);
+  return canvasParaJpeg(cv);
+}
+
+async function lerArquivo(lado, a, forcarImagem){
+  a.estado="lendo"; a.erro=""; a.modo="abrindo…"; listar(lado);
+  try{
+    let doc;
+    if(a.tipo==="xml"){
+      a.modo="lendo XML"; listar(lado);
+      doc = lerXmlNFe(await a.file.text()); a.modo="XML (exato)";
+    }else{
+      let texto="", imagens=[], extra="";
+      if(a.tipo==="pdf"){
+        const r = await lerPdf(a.file, forcarImagem);
+        texto=r.texto; imagens=r.imagens;
+        if(r.total>r.lidas) extra=" · só as "+r.lidas+" primeiras de "+r.total+" páginas";
+        a.modo = (imagens.length && texto ? "texto + "+imagens.length+" pág. como imagem" : imagens.length ? imagens.length+" pág. como imagem" : "texto do PDF") + extra;
+      }else{
+        imagens=[await lerImagem(a.file)]; a.modo="foto";
+      }
+      const modo=a.modo; a.modo="IA lendo ("+modo+")…"; listar(lado);
+      const j = await api({action:"extrair", tipo:lado, nome:a.nome, texto, imagens});
+      doc = j.doc; a.modo = modo;
+    }
+    a.doc = normDoc(doc, a.nome); a.estado="ok";
+  }catch(e){ a.estado="erro"; a.erro=e.message||String(e); a.doc=null; }
+  listar(lado);
+  return a;
+}
+
+/* ===================== NORMALIZAÇÃO E JUNÇÃO ===================== */
+function normDoc(doc, origem){
+  const itens = (doc.itens||[]).map(it=>{
+    let q=num(it.quantidade), u=num(it.valor_unitario), t=num(it.valor_total);
+    if(t==null && q!=null && u!=null) t=r2(q*u);
+    if(u==null && t!=null && q) u=t/q;
+    return { codigo:(it.codigo||"").toString().trim(), descricao:(it.descricao||"").trim(), unidade:(it.unidade||"").trim(),
+      qtd:q, vu:u, vt:t, desc:num(it.valor_desconto), ipi:num(it.valor_ipi), origem, pagina:it.pagina==null?null:it.pagina };
+  });
+  const T = doc.totais||{}, totais={};
+  ["valor_produtos","frete","seguro","desconto","ipi","icms_st","outras_despesas","valor_total"].forEach(k=>totais[k]=num(T[k]));
+  return Object.assign({}, doc, {itens, totais, origem, alertas:doc.alertas||[]});
+}
+function juntar(docs){
+  const lado = { docs, itens:[], totais:{}, alertas:[] };
+  docs.forEach(d=>{ d.itens.forEach(it=>lado.itens.push(it)); (d.alertas||[]).forEach(x=>lado.alertas.push(d.origem+": "+x)); });
+  lado.itens.forEach((it,i)=>it.i=i);
+  ["valor_produtos","frete","seguro","desconto","ipi","icms_st","outras_despesas","valor_total"].forEach(k=>{
+    const vs = docs.map(d=>d.totais[k]).filter(v=>v!=null);
+    lado.totais[k] = vs.length ? r2(vs.reduce((a,b)=>a+b,0)) : null;
+  });
+  const prim = k => { for(const d of docs) if(d[k]) return d[k]; return null; };
+  const todos = k => docs.map(d=>d[k]).filter(Boolean).join(", ") || null;
+  lado.numero = todos("numero"); lado.serie=todos("serie"); lado.data=todos("data_emissao");
+  lado.chave = todos("chave_acesso"); lado.fornecedor=prim("fornecedor_nome"); lado.cnpj=prim("fornecedor_cnpj");
+  lado.comprador=prim("comprador_nome"); lado.pedido=todos("pedido_referenciado"); lado.obra=prim("obra_ou_destino");
+  const dec = docs.map(d=>d.qtd_itens_declarada).filter(v=>v!=null);
+  lado.qtdDeclarada = dec.length===docs.length ? dec.reduce((a,b)=>a+b,0) : null;
+  lado.legibilidade = docs.some(d=>d.legibilidade==="ruim") ? "ruim" : docs.some(d=>d.legibilidade==="regular") ? "regular" : "boa";
+  return lado;
+}
+function somaItens(lado){ return r2(lado.itens.reduce((a,it)=>a+(it.vt||0),0)); }
+function totalLado(lado){
+  const t=lado.totais;
+  if(t.valor_total!=null) return t.valor_total;
+  return r2(somaItens(lado)+(t.frete||0)+(t.seguro||0)+(t.ipi||0)+(t.icms_st||0)+(t.outras_despesas||0)-(t.desconto||0));
+}
+
+/* ===================== PAREAMENTO ===================== */
+const PARADAS = new Set("DE DA DO DAS DOS COM PARA EM E A O P/ C/ S/ UN UND UNID PC PCT CX SC KG M M2 M3 MT LT L GL BD RL TB PAR JG CJ".split(" "));
+function tokens(s){
+  return nz(s).replace(/(\d),(\d)/g,"$1.$2").replace(/(\d)([A-Z])/g,"$1 $2").replace(/([A-Z])(\d)/g,"$1 $2").split(/[^A-Z0-9.\/"]+/).map(t=>t.replace(/^\.+|\.+$/g,"")).filter(t=>t && (t.length>1 || /\d/.test(t)) && !PARADAS.has(t));
+}
+function similaridade(o,n){
+  if(o.codigo && n.codigo && nz(o.codigo)===nz(n.codigo)) return 1;
+  const A=new Set(tokens(o.descricao)), B=new Set(tokens(n.descricao));
+  if(!A.size||!B.size) return 0;
+  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
+  let s = inter/Math.min(A.size,B.size)*0.7 + inter/new Set([...A,...B]).size*0.3;
+  const numA=[...A].filter(t=>/\d/.test(t)), numB=[...B].filter(t=>/\d/.test(t));
+  if(numA.length && numB.length && !numA.some(t=>B.has(t))) s*=0.45;     // medidas diferentes: 50 × 75
+  if(o.vu && n.vu && Math.abs(n.vu-o.vu)/o.vu < 0.03) s+=0.12;
+  if(o.qtd!=null && n.qtd!=null && o.qtd===n.qtd) s+=0.06;
+  return s;
+}
+function parearLocal(oc, nf){
+  const cand=[];
+  oc.itens.forEach((o,io)=>nf.itens.forEach((n,k)=>{ const s=similaridade(o,n); if(s>=0.3) cand.push({io,k,s}); }));
+  cand.sort((a,b)=>b.s-a.s);
+  const usOC=new Set(), usNF=new Set(), pares=[];
+  for(const c of cand){ if(usOC.has(c.io)||usNF.has(c.k)) continue; usOC.add(c.io); usNF.add(c.k);
+    pares.push({oc:c.io, nf:c.k, confianca:c.s>=0.75?"alta":c.s>=0.5?"media":"baixa", fator_conversao:null, motivo:"pareado pela descrição"}); }
+  return pares;
+}
+const ORDEM_CONF = {alta:3, media:2, baixa:1, manual:4};
+function montarPares(pares, nOC, nNF){
+  const porOC = Array.from({length:nOC},()=>({nf:[], conf:null, fator:null, motivo:""}));
+  const usado = new Set();
+  (pares||[]).forEach(p=>{
+    if(p.oc==null||p.nf==null) return;
+    const io=+p.oc, k=+p.nf;
+    if(!(io>=0&&io<nOC&&k>=0&&k<nNF) || usado.has(k)) return;
+    usado.add(k); const o=porOC[io]; o.nf.push(k);
+    if(!o.conf || ORDEM_CONF[p.confianca]<ORDEM_CONF[o.conf]) o.conf=p.confianca;
+    if(p.fator_conversao && p.fator_conversao>0) o.fator=p.fator_conversao;
+    if(!o.motivo) o.motivo=p.motivo||"";
+  });
+  return porOC;
+}
+async function parear(oc, nf){
+  const lista = l => l.itens.map(it=>({i:it.i, codigo:it.codigo, descricao:it.descricao, unidade:it.unidade, qtd:it.qtd, vu:it.vu, vt:it.vt}));
+  try{
+    const j = await api({action:"parear", oc:lista(oc), nf:lista(nf)});
+    return { porOC: montarPares(j.pares, oc.itens.length, nf.itens.length), via:"IA" };
+  }catch(e){
+    if(e.codigo==="SESSAO_INVALIDA"||e.codigo==="SEM_ACESSO") throw e;
+    return { porOC: montarPares(parearLocal(oc,nf), oc.itens.length, nf.itens.length), via:"descrição (a IA não respondeu: "+e.message+")" };
+  }
+}
+
+/* ===================== COMPARAÇÃO ===================== */
+const UNI = {"UN":"UN","UND":"UN","UNID":"UN","UNIDADE":"UN","PC":"UN","PÇ":"UN","PCA":"UN","PECA":"UN","M":"M","MT":"M","METRO":"M","ML":"M","KG":"KG","KGS":"KG","SC":"SC","SACO":"SC","CX":"CX","CAIXA":"CX","LT":"L","L":"L","LITRO":"L","M2":"M2","M²":"M2","M3":"M3","M³":"M3","BR":"BR","BARRA":"BR","BD":"BD","BALDE":"BD","GL":"GL","GALAO":"GL","RL":"RL","ROLO":"RL","PCT":"PCT","PACOTE":"PCT","TB":"TB","TUBO":"TB","PAR":"PAR","JG":"JG","CJ":"CJ","MIL":"MIL","MILHEIRO":"MIL","TON":"T","T":"T"};
+const uniN = u => { const x=nz(u).replace(/[.\s]/g,""); return UNI[x]||x; };
+const precoIgual = (a,b) => Math.abs(a-b) <= Math.max(0.01, Math.abs(b)*0.0005);
+
+function comparar(oc, nf, porOC, tol){
+  const linhas=[], usados=new Set();
+  const comp = {faltando:0, extras:0, qtd:0, preco:0, resto:0};
+
+  porOC.forEach((p,io)=>{
+    const o = oc.itens[io];
+    if(!p.nf.length){
+      linhas.push({tipo:"faltando", st:"div", io, o, ns:[], nIdx:[], impacto:-(o.vt||0),
+        msgs:[{c:"div", t:"Não veio na nota ("+fq(o.qtd)+" "+(o.unidade||"")+" · "+brl(o.vt)+")"}]});
+      comp.faltando -= (o.vt||0); return;
+    }
+    p.nf.forEach(k=>usados.add(k));
+    const ns = p.nf.map(k=>nf.itens[k]);
+    const soma = f => ns.every(n=>n[f]==null) ? null : ns.reduce((a,n)=>a+(n[f]||0),0);
+    const qN=soma("qtd"), tN=soma("vt"), dN=soma("desc"), iN=soma("ipi");
+    const f = p.fator||1;
+    const qNc = qN!=null ? qN/f : null;
+    const uNc = (qNc && tN!=null) ? tN/qNc : (ns.length===1 && ns[0].vu!=null ? ns[0].vu*f : null);
+    const msgs=[]; let st="ok"; let cq=0, cp=0;
+    const sobe = s => { if(s==="div") st="div"; else if(s==="at" && st==="ok") st="at"; };
+
+    const uO=uniN(o.unidade), uN=uniN(ns[0].unidade);
+    if(p.fator && f!==1) msgs.push({c:"info", t:"Convertido: 1 "+(o.unidade||"un")+" da OC = "+fq(f)+" "+(ns[0].unidade||"un")+" da NF"});
+    else if(uO && uN && uO!==uN){ msgs.push({c:"at", t:"Unidade diferente: OC em "+o.unidade+", NF em "+ns[0].unidade+" — confira a conversão"}); sobe("at"); }
+
+    if(o.qtd!=null && qNc!=null && Math.abs(qNc-o.qtd) > Math.max(1e-6, Math.abs(o.qtd)*1e-6)){
+      const dq=qNc-o.qtd; cq = dq*(o.vu||0); sobe("div");
+      msgs.push({c:"div", t: dq<0 ? "Veio "+fq(-dq)+" "+(o.unidade||"")+" a menos ("+fq(qNc)+" de "+fq(o.qtd)+")"
+                                  : "Veio "+fq(dq)+" "+(o.unidade||"")+" a mais ("+fq(qNc)+" em vez de "+fq(o.qtd)+")"});
+    }
+    if(o.vu!=null && uNc!=null && !precoIgual(uNc,o.vu)){
+      const du=uNc-o.vu; cp = du*(qNc!=null?qNc:(o.qtd||0));
+      const uEf = (qNc && tN!=null && (dN||iN)) ? (tN-(dN||0)+(iN||0))/qNc : null;
+      if(uEf!=null && precoIgual(uEf,o.vu)){
+        sobe("at"); msgs.push({c:"at", t:"Preço unitário difere ("+brlU(uNc)+" na NF), mas com "+(iN?"IPI":"")+(iN&&dN?" e ":"")+(dN?"desconto":"")+" fica "+brlU(uEf)+", igual à OC"});
+      }else{
+        sobe("div"); msgs.push({c:"div", t:"Preço "+(du>0?"maior":"menor")+": OC "+brlU(o.vu)+" · NF "+brlU(uNc)+" ("+(du>0?"+":"−")+brlU(Math.abs(du))+" por "+(o.unidade||"un")+")"});
+      }
+    }
+    if(p.conf==="baixa"){ sobe("at"); msgs.push({c:"at", t:"Pareamento incerto — confira se é o mesmo produto"+(p.motivo?" ("+p.motivo+")":"")}); }
+    if(ns.length>1) msgs.push({c:"info", t:"Na nota veio em "+ns.length+" linhas (somadas aqui)"});
+    const impacto = (tN||0)-(o.vt||0);
+    comp.qtd+=cq; comp.preco+=cp;
+    linhas.push({tipo:"par", st, io, o, ns, nIdx:p.nf.slice(), qNc, uNc, tN, impacto, conf:p.conf, msgs,
+      tipoDiv: msgs.filter(m=>m.c==="div").map(m=>/^Preço/.test(m.t)?"preco":"qtd")});
+  });
+
+  nf.itens.forEach((n,k)=>{
+    if(usados.has(k)) return;
+    linhas.push({tipo:"extra", st:"div", n, ns:[n], nIdx:[k], impacto:(n.vt||0),
+      msgs:[{c:"div", t:"Não está na ordem de compra ("+fq(n.qtd)+" "+(n.unidade||"")+" · "+brl(n.vt)+")"}]});
+    comp.extras += (n.vt||0);
+  });
+
+  // cabeçalho do documento
+  const T0=oc.totais, T1=nf.totais, v=x=>x||0;
+  comp.frete    = v(T1.frete)-v(T0.frete);
+  comp.impostos = (v(T1.ipi)+v(T1.icms_st))-(v(T0.ipi)+v(T0.icms_st));
+  comp.desconto = -(v(T1.desconto)-v(T0.desconto));
+  comp.outros   = (v(T1.seguro)+v(T1.outras_despesas))-(v(T0.seguro)+v(T0.outras_despesas));
+  const totOC=totalLado(oc), totNF=totalLado(nf), dif=r2(totNF-totOC);
+  const explicado = comp.faltando+comp.extras+comp.qtd+comp.preco+comp.frete+comp.impostos+comp.desconto+comp.outros;
+  comp.resto = r2(dif-explicado);
+
+  const cab = cabecalho(oc, nf);
+  const leitura = conferirLeitura(oc,"OC").concat(conferirLeitura(nf,"NF"));
+  const nDiv = linhas.filter(l=>l.st==="div").length + cab.filter(c=>c.st==="div").length;
+  const bate = nDiv===0 && Math.abs(dif)<=tol;
+  return { linhas, comp, totOC, totNF, dif, cab, leitura, nDiv, bate,
+           nAt: linhas.filter(l=>l.st==="at").length + cab.filter(c=>c.st==="at").length };
+}
+
+function cabecalho(oc, nf){
+  const c=[];
+  const cOC=soDig(oc.cnpj), cNF=soDig(nf.cnpj);
+  c.push({lab:"Fornecedor", oc:oc.fornecedor, nf:nf.fornecedor, st:""});
+  c.push({lab:"CNPJ do fornecedor", oc:oc.cnpj, nf:nf.cnpj,
+          st: cOC && cNF && cOC!==cNF ? "div" : "", msg: cOC && cNF && cOC!==cNF ? "CNPJ da nota é diferente do fornecedor da OC" : ""});
+  const nOC=soDig(oc.numero), ped=soDig(nf.pedido);
+  c.push({lab:"Número", oc:oc.numero, nf:(nf.numero||"")+(nf.serie?" · série "+nf.serie:""), st:""});
+  c.push({lab:"Pedido citado na NF", oc:"", nf:nf.pedido,
+          st: nOC && ped && ped.indexOf(nOC)<0 && nOC.indexOf(ped)<0 ? "at" : "",
+          msg: nOC && ped && ped.indexOf(nOC)<0 && nOC.indexOf(ped)<0 ? "A nota cita o pedido "+nf.pedido+", a OC é "+oc.numero : ""});
+  c.push({lab:"Data", oc:oc.data, nf:nf.data, st:""});
+  if(oc.obra) c.push({lab:"Obra / destino", oc:oc.obra, nf:"", st:""});
+  if(nf.chave) c.push({lab:"Chave de acesso", oc:"", nf:nf.chave, st:""});
+  c.push({lab:"Quantidade de itens", oc:String(oc.itens.length), nf:String(nf.itens.length), st: oc.itens.length!==nf.itens.length ? "at":"",
+          msg: oc.itens.length!==nf.itens.length ? "A OC tem "+oc.itens.length+" itens e a NF "+nf.itens.length : ""});
+  return c;
+}
+
+function conferirLeitura(lado, nome){
+  const al=[];
+  const soma = somaItens(lado), vp=lado.totais.valor_produtos;
+  if(vp!=null && Math.abs(soma-vp)>0.05)
+    al.push({st:"div", t:nome+": a soma dos itens lidos ("+brl(soma)+") não bate com o total de produtos do documento ("+brl(vp)+"). Pode ter linha lida errado ou faltando — confira em \"Itens lidos\"."});
+  lado.itens.forEach(it=>{
+    it.suspeito = it.qtd!=null && it.vu!=null && it.vt!=null && Math.abs(it.qtd*it.vu-it.vt) > Math.max(0.05, Math.abs(it.vt)*0.002);
+  });
+  const sus = lado.itens.filter(it=>it.suspeito).length;
+  if(sus) al.push({st:"at", t:nome+": "+sus+" linha(s) onde quantidade × unitário não dá o total — pode ser leitura errada (marcadas em amarelo em \"Itens lidos\")."});
+  if(lado.qtdDeclarada!=null && lado.qtdDeclarada!==lado.itens.length)
+    al.push({st:"div", t:nome+": o documento diz ter "+lado.qtdDeclarada+" itens e foram lidos "+lado.itens.length+"."});
+  const t=lado.totais;
+  if(t.valor_total!=null && vp!=null){
+    const calc = r2(vp+(t.frete||0)+(t.seguro||0)+(t.ipi||0)+(t.icms_st||0)+(t.outras_despesas||0)-(t.desconto||0));
+    if(Math.abs(calc-t.valor_total)>0.05) al.push({st:"at", t:nome+": produtos + frete + impostos − desconto dá "+brl(calc)+", mas o total lido é "+brl(t.valor_total)+"."});
+  }
+  if(lado.legibilidade!=="boa") al.push({st:"at", t:nome+": legibilidade "+lado.legibilidade+" — confira os valores com o documento."});
+  lado.alertas.forEach(x=>al.push({st:"at", t:nome+" · "+x}));
+  return al;
+}
+
+/* ===================== FLUXO ===================== */
+let R = null;          // { oc, nf, porOC, via, quando, id }
+let FILTRO = "todos";
+
+function tolerancia(){ const v=num($("tol").value); return v==null||v<0 ? 0.05 : v; }
+function progresso(t, erro){ const p=$("progresso"); p.textContent=t||""; p.className="progresso"+(erro?" err":""); }
+
+async function conferir(){
+  if(!ARQ.OC.length || !ARQ.NF.length){ progresso("Coloque pelo menos um arquivo de cada lado: a ordem de compra e a nota fiscal.", true); return; }
+  const b=$("b-conferir"); b.disabled=true;
+  try{
+    const forcar=$("forcar-img").checked;
+    const pend=[];
+    ["OC","NF"].forEach(l=>ARQ[l].forEach(a=>{ if(a.estado!=="ok") pend.push(lerArquivo(l,a,forcar)); }));
+    if(pend.length){ progresso("Lendo "+pend.length+" arquivo(s)… nota escaneada leva até um minuto."); await Promise.all(pend); }
+    const erros=[...ARQ.OC,...ARQ.NF].filter(a=>a.estado!=="ok");
+    if(erros.length){ progresso("Não consegui ler: "+erros.map(a=>a.nome+" — "+a.erro).join(" · "), true); return; }
+    const oc=juntar(ARQ.OC.map(a=>a.doc)), nf=juntar(ARQ.NF.map(a=>a.doc));
+    if(!oc.itens.length || !nf.itens.length){ progresso("Nenhum item encontrado em "+(!oc.itens.length?"OC":"NF")+". Tente \"ler como imagem\".", true); return; }
+    progresso("Cruzando "+oc.itens.length+" itens da OC com "+nf.itens.length+" da NF…");
+    const pr = await parear(oc,nf);
+    R = { id:Date.now(), quando:hojeBR(), oc, nf, porOC:pr.porOC, via:pr.via, arquivos:{OC:ARQ.OC.map(a=>a.nome), NF:ARQ.NF.map(a=>a.nome)} };
+    progresso(""); FILTRO="todos"; render(true); salvarHist();
+  }catch(e){ progresso(e.message||String(e), true); }
+  finally{ b.disabled=false; }
+}
+
+async function parearDeNovo(){
+  if(!R) return; toast("Cruzando de novo…");
+  try{ const pr=await parear(R.oc,R.nf); R.porOC=pr.porOC; R.via=pr.via; render(); salvarHist(); }
+  catch(e){ toast(e.message); }
+}
+
+/* ===================== TELA DO RESULTADO ===================== */
+function render(rolar){
+  if(!R) { $("resultado").classList.add("esconde"); return; }
+  const tol=tolerancia();
+  const C = comparar(R.oc, R.nf, R.porOC, tol);
+  R.ultimo = { bate:C.bate, dif:C.dif, nDiv:C.nDiv };
+  const box=$("resultado"); box.classList.remove("esconde");
+
+  const titulo = C.bate ? "A nota bate com a ordem de compra"
+    : C.nDiv ? C.nDiv+" divergência"+(C.nDiv>1?"s":"")+" entre a OC e a NF"
+    : "Os itens batem, mas o total da nota é diferente";
+  const sub = [R.oc.fornecedor||R.nf.fornecedor, R.oc.numero?"OC "+R.oc.numero:"", R.nf.numero?"NF "+R.nf.numero:""].filter(Boolean).join("  ·  ")
+    + (C.nAt ? "  ·  "+C.nAt+" ponto(s) para conferir" : "");
+
+  const cnt = {todos:C.linhas.length, div:0, faltando:0, extra:0, preco:0, qtd:0, at:0};
+  C.linhas.forEach(l=>{ if(l.st==="div") cnt.div++; if(l.st==="at") cnt.at++; if(l.tipo==="faltando") cnt.faltando++; if(l.tipo==="extra") cnt.extra++;
+    if(l.tipoDiv){ if(l.tipoDiv.indexOf("preco")>=0) cnt.preco++; if(l.tipoDiv.indexOf("qtd")>=0) cnt.qtd++; } });
+  const chips=[["todos","Todos"],["div","Divergentes"],["faltando","Faltando na NF"],["extra","Não pedidos"],["qtd","Quantidade"],["preco","Preço"],["at","Para conferir"]];
+
+  box.innerHTML = `
+  <div class="veredito ${C.bate?"ok":"div"}">
+    <div class="selo" aria-hidden="true">${C.bate?"✓":"!"}</div>
+    <div><h2>${esc(titulo)}</h2><p>${esc(sub)}</p></div>
+    <div class="dif"><b>${C.dif===0?"R$ 0,00":sinalBrl(C.dif)}</b><span>NF − OC</span></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lab">Itens na OC</div><div class="val">${R.oc.itens.length}</div><div class="sub">${esc(R.arquivos.OC.join(", "))}</div></div>
+    <div class="kpi"><div class="lab">Itens na NF</div><div class="val">${R.nf.itens.length}</div><div class="sub">${esc(R.arquivos.NF.join(", "))}</div></div>
+    <div class="kpi"><div class="lab">Total da OC</div><div class="val">${brl(C.totOC)}</div><div class="sub">${R.oc.totais.valor_total!=null?"lido do documento":"somado dos itens"}</div></div>
+    <div class="kpi"><div class="lab">Total da NF</div><div class="val">${brl(C.totNF)}</div><div class="sub">${R.nf.totais.valor_total!=null?"valor total da nota":"somado dos itens"}</div></div>
+  </div>
+
+  <div class="duas">
+    <div class="painel">
+      <div class="sec"><span class="cond">De onde vem a diferença</span></div>
+      ${tabelaDecomp(C)}
+    </div>
+    <div class="painel">
+      <div class="sec"><span class="cond">Documentos</span></div>
+      <table class="cab"><thead><tr><th></th><th>Ordem de compra</th><th>Nota fiscal</th></tr></thead><tbody>
+      ${C.cab.map(c=>`<tr class="${c.st}"><td>${esc(c.lab)}</td><td>${esc(c.oc||"—")}</td><td>${esc(c.nf||"—")}</td></tr>`).join("")}
+      </tbody></table>
+      ${(C.cab.some(c=>c.msg)||C.leitura.length) ? `<ul class="alertas">
+        ${C.cab.filter(c=>c.msg).map(c=>`<li class="${c.st==="div"?"div":""}">${esc(c.msg)}</li>`).join("")}
+        ${C.leitura.map(a=>`<li class="${a.st==="div"?"div":""}">${esc(a.t)}</li>`).join("")}</ul>` : ""}
+    </div>
+  </div>
+
+  <div class="painel">
+    <div class="sec"><span class="cond">Item a item</span>
+      <div class="dir">
+        <button class="btn sec2 peq" type="button" id="b-copiar">Copiar resumo</button>
+        <button class="btn sec2 peq" type="button" id="b-csv">Baixar planilha</button>
+        <button class="btn sec2 peq" type="button" id="b-print">Imprimir / PDF</button>
+      </div></div>
+    <div class="filtros" role="group" aria-label="Filtrar itens">
+      ${chips.map(([k,t])=>`<button class="chip" type="button" data-filtro="${k}" aria-pressed="${FILTRO===k}">${t}<span class="n">${cnt[k]}</span></button>`).join("")}
+    </div>
+    <div class="espelho-box">${tabelaEspelho(C)}</div>
+    <p class="nota">Pareamento pela ${esc(R.via)}. Se a IA juntou errado, troque no seletor da linha — a conta refaz na hora.
+      <button class="btn sec2 peq" type="button" id="b-repar">Cruzar de novo com a IA</button></p>
+    <details class="lidos"><summary>Itens lidos dos documentos (dá para corrigir um valor lido errado)</summary>
+      <div class="lidos-grid">
+        <div><h4>Ordem de compra</h4>${tabelaLidos(R.oc,"oc")}</div>
+        <div><h4>Nota fiscal</h4>${tabelaLidos(R.nf,"nf")}</div>
+      </div>
+      <p class="nota">Linhas em amarelo: quantidade × unitário não dá o total — conferir com o papel.</p>
+    </details>
+  </div>`;
+
+  $("b-copiar").onclick=()=>copiar(C);
+  $("b-csv").onclick=()=>baixarCsv(C);
+  $("b-print").onclick=()=>window.print();
+  $("b-repar").onclick=parearDeNovo;
+  if(rolar) box.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function tabelaDecomp(C){
+  const k=C.comp;
+  const linhas=[
+    ["Itens que não vieram na nota", k.faltando, "valor que estava na OC e não foi faturado"],
+    ["Itens na nota que não estavam na OC", k.extras, ""],
+    ["Diferença de quantidade", k.qtd, "a mais ou a menos, ao preço da OC"],
+    ["Diferença de preço", k.preco, "diferença no unitário × quantidade faturada"],
+    ["Frete", k.frete, ""],
+    ["Impostos destacados (IPI e ST)", k.impostos, ""],
+    ["Desconto", k.desconto, ""],
+    ["Seguro e outras despesas", k.outros, ""],
+    ["Arredondamento / leitura", k.resto, Math.abs(k.resto)>0.05?"diferença que os itens não explicam — conferir os totais lidos":""]
+  ];
+  const cls=v=>Math.abs(v)<0.005?"zero":v<0?"neg":"pos";
+  return `<table class="decomp"><tbody>
+    <tr><td>Total da OC</td><td class="v">${brl(C.totOC)}</td></tr>
+    ${linhas.filter(l=>Math.abs(l[1])>=0.005 || l[0]==="Itens que não vieram na nota" || l[0]==="Diferença de preço").map(l=>
+      `<tr><td>${esc(l[0])}${l[2]?`<small>${esc(l[2])}</small>`:""}</td><td class="v ${cls(l[1])}">${Math.abs(l[1])<0.005?"—":sinalBrl(r2(l[1]))}</td></tr>`).join("")}
+    <tr class="tot"><td>Total da NF</td><td class="v">${brl(C.totNF)}</td></tr>
+  </tbody></table>`;
+}
+
+function passaFiltro(l){
+  switch(FILTRO){
+    case "div": return l.st==="div";
+    case "at": return l.st==="at";
+    case "faltando": return l.tipo==="faltando";
+    case "extra": return l.tipo==="extra";
+    case "preco": return !!(l.tipoDiv && l.tipoDiv.indexOf("preco")>=0);
+    case "qtd": return !!(l.tipoDiv && l.tipoDiv.indexOf("qtd")>=0);
+    default: return true;
+  }
+}
+function opcoesNF(sel){
+  return `<option value="">— não veio na NF —</option>` + R.nf.itens.map((n,k)=>
+    `<option value="${k}" ${sel.indexOf(k)>=0?"selected":""}>NF ${k+1}. ${esc(n.descricao.slice(0,60))}</option>`).join("");
+}
+function opcoesOC(){
+  return `<option value="">— ligar a um item da OC —</option>` + R.oc.itens.map((o,i)=>
+    `<option value="${i}">OC ${i+1}. ${esc(o.descricao.slice(0,60))}</option>`).join("");
+}
+function tabelaEspelho(C){
+  const vis = C.linhas.filter(passaFiltro);
+  if(!vis.length) return `<div class="nada">Nenhum item neste filtro.</div>`;
+  const dQ = l => l.o && l.qNc!=null && l.o.qtd!=null && Math.abs(l.qNc-l.o.qtd)>1e-6;
+  const dU = l => l.o && l.uNc!=null && l.o.vu!=null && !precoIgual(l.uNc,l.o.vu);
+  return `<table class="espelho"><thead>
+    <tr class="grupo"><th colspan="6">Ordem de compra</th><th></th><th colspan="5">Nota fiscal</th></tr>
+    <tr><th>#</th><th>Produto</th><th>Un</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unitário</th><th style="text-align:right">Total</th>
+        <th>Situação</th>
+        <th>Produto</th><th>Un</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unitário</th><th style="text-align:right">Total</th></tr></thead><tbody>
+  ${vis.map(l=>{
+    const o=l.o, n=l.ns[0];
+    const tag = l.tipo==="faltando" ? `<span class="tag div">Faltando na NF</span>`
+      : l.tipo==="extra" ? `<span class="tag div">Não pedido</span>`
+      : l.st==="div" ? `<span class="tag div">Divergente</span>` : l.st==="at" ? `<span class="tag at">Conferir</span>` : `<span class="tag ok">OK</span>`;
+    const imp = Math.abs(l.impacto)>=0.005 ? `<div class="imp ${l.impacto<0?"neg":"pos"}">${sinalBrl(r2(l.impacto))}</div>` : "";
+    const msgs = l.msgs.length ? `<ul class="msgs">${l.msgs.map(m=>`<li class="${m.c}">${esc(m.t)}</li>`).join("")}</ul>` : "";
+    const seletor = l.tipo==="extra"
+      ? `<select data-ligar="${l.nIdx[0]}" aria-label="Ligar a um item da OC">${opcoesOC()}</select>`
+      : `<select data-trocar="${l.io}" aria-label="Item da NF correspondente">${opcoesNF(l.nIdx)}</select>`;
+    const ladoOC = o ? `<td class="num">${l.io+1}</td>
+        <td><div class="desc">${esc(o.descricao)}</div>${o.codigo?`<div class="cod">cód. ${esc(o.codigo)}</div>`:""}</td>
+        <td>${esc(o.unidade)}</td><td class="num">${fq(o.qtd)}</td><td class="num">${brlU(o.vu)}</td><td class="num">${brl(o.vt)}</td>`
+      : `<td></td><td colspan="5" class="vazio">não consta na ordem de compra</td>`;
+    const ladoNF = l.ns.length ? `<td><div class="desc">${l.ns.map(x=>esc(x.descricao)).join("<br>")}</div>${l.ns[0].codigo?`<div class="cod">cód. ${l.ns.map(x=>esc(x.codigo)).join(", ")}</div>`:""}</td>
+        <td>${esc(n.unidade)}</td>
+        <td class="num ${dQ(l)?"difere":""}">${l.ns.length>1?fq(l.ns.reduce((a,x)=>a+(x.qtd||0),0)):fq(n.qtd)}</td>
+        <td class="num ${dU(l)?"difere":""}">${l.ns.length>1?brlU(l.uNc):brlU(n.vu)}</td>
+        <td class="num">${brl(l.ns.length>1?l.tN:n.vt)}</td>`
+      : `<td colspan="5" class="vazio">não veio na nota</td>`;
+    return `<tr class="${l.st}">${ladoOC}<td class="meio">${tag}${imp}${msgs}${seletor}</td>${ladoNF}</tr>`;
+  }).join("")}
+  </tbody></table>`;
+}
+function tabelaLidos(lado, q){
+  const inp=(i,c,v)=>`<input data-edit="${q}:${i}:${c}" value="${v==null?"":String(v).replace(".",",")}" inputmode="decimal" aria-label="${c}">`;
+  return `<div class="tl-box"><table class="tl"><thead><tr><th>#</th><th>Produto</th><th>Un</th><th>Qtd</th><th>Unitário</th><th>Total</th></tr></thead><tbody>
+    ${lado.itens.map((it,i)=>`<tr class="${it.suspeito?"suspeito":""}"><td>${i+1}</td><td>${esc(it.descricao)}${it.pagina?` <span class="cod">p.${it.pagina}</span>`:""}</td><td>${esc(it.unidade)}</td>
+      <td class="num">${inp(i,"qtd",it.qtd)}</td><td class="num">${inp(i,"vu",it.vu)}</td><td class="num">${inp(i,"vt",it.vt)}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+/* ---------------- ações na tela do resultado ---------------- */
+document.addEventListener("click", e=>{
+  const ch=e.target.closest("[data-filtro]"); if(ch){ FILTRO=ch.dataset.filtro; render(); return; }
+  const t=e.target.closest("[data-tirar]");
+  if(t){ const [l,id]=t.dataset.tirar.split(":"); ARQ[l]=ARQ[l].filter(a=>a.id!==+id); listar(l); return; }
+  const rf=e.target.closest("[data-refazer]");
+  if(rf){ const [l,id]=rf.dataset.refazer.split(":"); const a=ARQ[l].find(x=>x.id===+id);
+    if(a){ lerArquivo(l,a,true).then(()=>{ if(a.estado==="ok") toast("Lido de novo como imagem. Clique em Conferir."); }); } return; }
+  const h=e.target.closest("[data-hist]"); if(h){ abrirHist(+h.dataset.hist); }
+});
+document.addEventListener("change", e=>{
+  const s=e.target;
+  if(s.dataset.trocar!=null){
+    const io=+s.dataset.trocar, k=s.value===""?null:+s.value;
+    if(k!=null) R.porOC.forEach(p=>{ p.nf=p.nf.filter(x=>x!==k); });
+    R.porOC[io] = { nf: k==null?[]:[k], conf: k==null?null:"manual", fator:null, motivo:"escolhido à mão" };
+    render(); salvarHist(); return;
+  }
+  if(s.dataset.ligar!=null && s.value!==""){
+    const k=+s.dataset.ligar, io=+s.value, p=R.porOC[io];
+    if(p.nf.indexOf(k)<0) p.nf.push(k); p.conf="manual"; p.motivo="escolhido à mão";
+    render(); salvarHist(); return;
+  }
+  if(s.dataset.edit){
+    const [q,i,c]=s.dataset.edit.split(":"); const lado=q==="oc"?R.oc:R.nf; const it=lado.itens[+i];
+    it[c]=num(s.value);
+    if(c!=="vt" && it.qtd!=null && it.vu!=null) it.vt=r2(it.qtd*it.vu);
+    render(); salvarHist();
+    const d=document.querySelector("details.lidos"); if(d) d.open=true;
+  }
+});
+$("tol").addEventListener("change", ()=>{ if(R) render(); });
+
+function copiar(C){
+  const L=[];
+  L.push("CONFERÊNCIA OC × NF — "+R.quando);
+  L.push("Fornecedor: "+(R.oc.fornecedor||R.nf.fornecedor||"—")+(R.nf.cnpj?" · CNPJ "+R.nf.cnpj:""));
+  L.push("OC "+(R.oc.numero||"—")+": "+R.oc.itens.length+" itens · "+brl(C.totOC));
+  L.push("NF "+(R.nf.numero||"—")+": "+R.nf.itens.length+" itens · "+brl(C.totNF));
+  L.push("Diferença (NF − OC): "+sinalBrl(C.dif));
+  L.push(C.bate ? "\nResultado: BATE" : "\nDIVERGÊNCIAS");
+  let n=0;
+  C.cab.filter(c=>c.st==="div").forEach(c=>L.push((++n)+". "+c.msg));
+  C.linhas.filter(l=>l.st==="div").forEach(l=>{
+    const d=(l.o||l.ns[0]).descricao;
+    const m=l.msgs.filter(x=>x.c==="div").map(x=>x.t).join("; ");
+    L.push((++n)+". "+d+" — "+m+(Math.abs(l.impacto)>=0.005?" ["+sinalBrl(r2(l.impacto))+"]":""));
+  });
+  const k=C.comp;
+  [["Frete",k.frete],["Impostos (IPI/ST)",k.impostos],["Desconto",k.desconto],["Outras despesas",k.outros]]
+    .forEach(([t,v])=>{ if(Math.abs(v)>=0.005) L.push((++n)+". "+t+": "+sinalBrl(r2(v))); });
+  const at=C.linhas.filter(l=>l.st==="at");
+  if(at.length){ L.push("\nPARA CONFERIR"); at.forEach(l=>L.push("- "+(l.o||l.ns[0]).descricao+" — "+l.msgs.filter(x=>x.c==="at").map(x=>x.t).join("; "))); }
+  const txt=L.join("\n");
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(()=>toast("Resumo copiado."))
+    .catch(()=>{ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast("Resumo copiado."); });
+}
+function baixarCsv(C){
+  const n2=v=>v==null||isNaN(v)?"":String(Math.round(v*10000)/10000).replace(".",",");
+  const c=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const H=["Situação","OC #","OC produto","OC un","OC qtd","OC unitário","OC total","NF produto","NF un","NF qtd","NF unitário","NF total","Impacto (NF−OC)","Observações"];
+  const rows=C.linhas.map(l=>{
+    const o=l.o||{}, ns=l.ns;
+    const sit = l.tipo==="faltando"?"FALTANDO NA NF":l.tipo==="extra"?"NÃO PEDIDO":l.st==="div"?"DIVERGENTE":l.st==="at"?"CONFERIR":"OK";
+    return [sit, l.io!=null?l.io+1:"", o.descricao, o.unidade, n2(o.qtd), n2(o.vu), n2(o.vt),
+      ns.map(x=>x.descricao).join(" + "), ns[0]?ns[0].unidade:"", n2(ns.length?ns.reduce((a,x)=>a+(x.qtd||0),0):null),
+      n2(ns.length>1?l.uNc:(ns[0]||{}).vu), n2(ns.length?ns.reduce((a,x)=>a+(x.vt||0),0):null), n2(r2(l.impacto)),
+      l.msgs.map(m=>m.t).join(" | ")].map(c).join(";");
+  });
+  const csv="\uFEFF"+[H.map(c).join(";")].concat(rows).join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="conferencia_OC"+soDig(R.oc.numero||"")+"_NF"+soDig(R.nf.numero||"")+".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------------- histórico (só neste navegador) ---------------- */
+function lerHist(){ try{ return JSON.parse(localStorage.getItem(HIST_KEY)||"[]"); }catch(e){ return []; } }
+function salvarHist(){
+  if(!R) return;
+  const h=lerHist().filter(x=>x.id!==R.id);
+  h.unshift({ id:R.id, quando:R.quando, forn:R.oc.fornecedor||R.nf.fornecedor||"", ocn:R.oc.numero||"", nfn:R.nf.numero||"",
+    bate:R.ultimo&&R.ultimo.bate, dif:R.ultimo?R.ultimo.dif:0, nDiv:R.ultimo?R.ultimo.nDiv:0,
+    estado:{oc:R.oc, nf:R.nf, porOC:R.porOC, via:R.via, arquivos:R.arquivos} });
+  let lista=h.slice(0,30);
+  while(lista.length){ try{ localStorage.setItem(HIST_KEY, JSON.stringify(lista)); break; }catch(e){ lista=lista.slice(0,-1); } }
+  pintarHist();
+}
+function pintarHist(){
+  const h=lerHist();
+  $("hist").innerHTML = h.length ? h.map(x=>`<li data-hist="${x.id}" tabindex="0"><span class="q">${esc(x.quando)}</span>
+    <span class="t">${esc(x.forn||"Fornecedor não lido")} · OC ${esc(x.ocn||"—")} · NF ${esc(x.nfn||"—")}</span>
+    <span class="d ${x.bate?"ok":"div"}">${x.bate?"bate":x.nDiv+" diverg. · "+sinalBrl(x.dif)}</span></li>`).join("")
+    : `<li style="cursor:default;color:var(--text3)">Nenhuma conferência feita neste computador ainda.</li>`;
+}
+function abrirHist(id){
+  const x=lerHist().find(h=>h.id===id); if(!x) return;
+  R=Object.assign({id:x.id, quando:x.quando}, x.estado); FILTRO="todos"; render(true);
+}
+$("b-hist-limpar").onclick=()=>{ localStorage.removeItem(HIST_KEY); pintarHist(); };
+
+/* ---------------- entrada de arquivos ---------------- */
+["OC","NF"].forEach(l=>{
+  const z=$("z-"+l), f=$("f-"+l);
+  z.onclick=()=>f.click();
+  z.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); f.click(); } };
+  f.onchange=()=>{ adicionar(l, f.files); f.value=""; };
+  z.ondragover=e=>{ e.preventDefault(); z.classList.add("sobre"); };
+  z.ondragleave=()=>z.classList.remove("sobre");
+  z.ondrop=e=>{ e.preventDefault(); z.classList.remove("sobre"); adicionar(l, e.dataTransfer.files); };
+});
+$("b-conferir").onclick=conferir;
+$("b-limpar").onclick=()=>{ ARQ.OC=[]; ARQ.NF=[]; listar("OC"); listar("NF"); R=null; render(); progresso(""); window.scrollTo({top:0,behavior:"smooth"}); };
+$("forcar-img").onchange=()=>{ ["OC","NF"].forEach(l=>ARQ[l].forEach(a=>{ if(a.tipo==="pdf"&&a.estado==="ok"){ a.estado="novo"; a.doc=null; } })); listar("OC"); listar("NF"); };
+
+/* ---------------- login (quando esta aba não tem a sessão do portal) ---------------- */
+const MSG_LOGIN = { LOGIN_NAO_ENCONTRADO:"Login não encontrado.", SENHA_INCORRETA:"Senha incorreta.",
+  INFORME_LOGIN:"Digite o login.", BLOQUEADO:"Muitas tentativas. Aguarde e tente de novo." };
+$("f-login").onsubmit = async e=>{
+  e.preventDefault();
+  const b=$("b-entrar"), er=$("login-erro"); er.textContent=""; b.disabled=true; b.textContent="Entrando…";
+  try{
+    const r = await fetch(PORTAL_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"login", login:$("lg").value.trim(), senha:$("sn").value})});
+    const j = await r.json();
+    if(!j.ok){ let m=MSG_LOGIN[j.erro]||("Erro: "+j.erro); if(j.erro==="SENHA_INCORRETA"&&typeof j.restantes==="number") m+=" ("+j.restantes+" tentativa(s) restante(s))"; er.textContent=m; return; }
+    const dados = JSON.stringify(Object.assign({token:j.token}, j.sessao));
+    localStorage.removeItem(KEY); sessionStorage.removeItem(KEY);
+    ($("manter").checked ? localStorage : sessionStorage).setItem(KEY, dados);
+    location.reload();
+  }catch(_){ er.textContent="Não consegui falar com o servidor do portal. Confira a internet."; }
+  finally{ b.disabled=false; b.textContent="Entrar"; }
+};
+
+/* ---------------- início ---------------- */
+if(!S) pedirLogin("");
+if(S){
+  $("u-nome").textContent = S.nome || S.login || "";
+  if(!podeAcessar(S)){
+    const b=$("bloqueio"); b.classList.remove("esconde");
+    b.textContent = "Seu login não tem o acesso \""+CHAVE+"\". Peça ao ADM para marcar essa opção na coluna ACESSOS do banco LOGINS.";
+    $("b-conferir").disabled = true;
+  }
+}
+pintarHist();
+</script>
+</body>
+</html>

@@ -56,7 +56,6 @@ main.wrap{padding:20px 20px 60px}
 .arq .est.ok{color:var(--ok);font-weight:600}
 .arq button{border:0;background:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:4px}
 .arq button:hover{background:var(--bg3);color:var(--div)}
-.arq .refazer{font-size:11.5px;font-weight:700;color:var(--azul);text-decoration:underline}
 .opcoes{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)}
 .opcoes label{font-size:12.5px;color:var(--text3);display:flex;align-items:center;gap:7px;cursor:pointer}
 .opcoes .campo{display:flex;flex-direction:column;gap:3px}
@@ -235,8 +234,7 @@ table.tl{width:100%;border-collapse:collapse;font-size:12px}
       </div>
     </div>
     <div class="opcoes">
-      <div class="campo"><span>Tolerância no total (R$)</span><input type="text" id="tol" value="0,05" inputmode="decimal"></div>
-      <label><input type="checkbox" id="forcar-img"> Ler PDFs como imagem (use quando a leitura vier errada)</label>
+      <div class="campo"><span>Tolerância no total (R$)</span><input type="text" id="tol" value="0,00" inputmode="decimal"></div>
       <div class="acoes">
         <button class="btn sec2" id="b-limpar" type="button">Nova conferência</button>
         <button class="btn" id="b-conferir" type="button">Conferir</button>
@@ -282,7 +280,8 @@ const KEY    = "morais_sessao";                 // mesma sessão do portal (mesm
    nova (noopener), que não herda esse sessionStorage. */
 const PORTAL_API = "https://script.google.com/macros/s/AKfycbwvMnVHZd7y5k-GP8_Dg9zkWyD2fqqH8UI4gaXsQ0iJnm9QNSsyyUhODFMyMW6BfAk/exec";
 const CHAVE  = "CONFERÊNCIA DE NF";             // opção da coluna ACESSOS do banco LOGINS
-const MAX_PAG = 12;
+const MAX_PAG = 15;
+const PARALELO = 3;                             // páginas lidas ao mesmo tempo
 const HIST_KEY = "conf_nf_historico_v1";
 
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -341,12 +340,22 @@ const MSG = {
 };
 async function api(payload){
   if(API.indexOf("COLE_AQUI")===0) throw new Error("Falta colar a URL do Apps Script em const API, no index.html.");
-  let r;
-  try{
-    r = await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({},payload,{token:S.token}))});
-  }catch(e){ throw new Error("Sem conexão com o Apps Script. Confira a internet."); }
-  const txt = await r.text(); let j;
-  try{ j=JSON.parse(txt); }catch(e){ throw new Error("O Apps Script não respondeu JSON — confira se a implantação está como \"Qualquer pessoa\"."); }
+  const corpo = JSON.stringify(Object.assign({},payload,{token:S.token}));
+  let j, ultimo = "";
+  /* Duas tentativas: o Google às vezes devolve página de erro (HTML) no lugar
+     da resposta — pico de uso ou execução derrubada. Na 2ª falha mostra o que
+     veio, para dar para diagnosticar pelo print. */
+  for(let t=1; t<=2 && !j; t++){
+    try{
+      const r = await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:corpo});
+      const txt = await r.text();
+      try{ j = JSON.parse(txt); }
+      catch(_){ ultimo = "o servidor devolveu uma página de erro (HTTP "+r.status+"): "+
+        txt.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim().slice(0,180); }
+    }catch(_){ ultimo = "sem conexão com o Apps Script"; }
+    if(!j && t===1) await new Promise(ok=>setTimeout(ok,2500));
+  }
+  if(!j) throw new Error("Falhou duas vezes — "+ultimo);
   if(!j.ok){
     if(j.erro==="SESSAO_INVALIDA"){ try{ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); }catch(_){} pedirLogin(MSG.SESSAO_INVALIDA); }
     const e=new Error(MSG[j.erro] || ("Erro do servidor: "+j.erro+(j.detalhe?" — "+j.detalhe:""))); e.codigo=j.erro; throw e; }
@@ -380,10 +389,8 @@ function listar(lado){
     else if(a.estado==="lendo") est=esc(a.modo||"lendo…");
     else if(a.estado==="ok"){ est=(a.doc.itens.length)+" itens"+(a.modo?" · "+esc(a.modo):""); cls="ok"; }
     else if(a.estado==="erro"){ est=esc(a.erro); cls="err"; }
-    const refazer = (a.estado==="ok"||a.estado==="erro") && a.tipo==="pdf"
-      ? `<button class="refazer" data-refazer="${lado}:${a.id}" title="Ler de novo esta página como imagem">ler como imagem</button>` : "";
     return `<li class="arq"><span class="tp">${a.tipo}</span><span class="nm" title="${esc(a.nome)}">${esc(a.nome)}</span>
-      <span class="est ${cls}">${est}</span>${refazer}
+      <span class="est ${cls}">${est}</span>
       <button data-tirar="${lado}:${a.id}" aria-label="Tirar ${esc(a.nome)}" title="Tirar">×</button></li>`;
   }).join("");
 }
@@ -457,19 +464,16 @@ async function renderPagina(pg){
   await pg.render({canvasContext:ctx, viewport:vp}).promise;
   return canvasParaJpeg(cv);
 }
-async function lerPdf(file, forcarImagem){
+async function lerPdf(file){
   if(!window.pdfjsLib) throw new Error("Não carregou o leitor de PDF (pdf.js). Recarregue a página.");
   const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
-  const n = Math.min(pdf.numPages, MAX_PAG);
-  const textos=[], imagens=[], pgImg=[];
+  const n = Math.min(pdf.numPages, MAX_PAG), paginas=[];
   for(let i=1;i<=n;i++){
     const pg = await pdf.getPage(i);
-    let t = "";
-    if(!forcarImagem){ t = montarLinhas((await pg.getTextContent()).items); }
-    if(!forcarImagem && textoBom(t)) textos.push("--- PÁGINA "+i+" ---\n"+t);
-    else { imagens.push(await renderPagina(pg)); pgImg.push(i); }
+    const t = montarLinhas((await pg.getTextContent()).items);
+    paginas.push({ n:i, texto:t, bom:textoBom(t) });
   }
-  return { texto:textos.join("\n\n"), imagens, total:pdf.numPages, lidas:n, pgImg };
+  return { pdf, paginas, total:pdf.numPages, lidas:n };
 }
 async function lerImagem(file){
   const img = await new Promise((ok,falha)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=()=>falha(new Error("Imagem ilegível")); i.src=URL.createObjectURL(file); });
@@ -480,28 +484,88 @@ async function lerImagem(file){
   return canvasParaJpeg(cv);
 }
 
-async function lerArquivo(lado, a, forcarImagem){
+/* Cada página vai numa chamada separada (3 de cada vez). Uma chamada só com
+   o documento inteiro passava do tempo do Apps Script em nota grande e o
+   Google devolvia página de erro no lugar da resposta. */
+async function emParalelo(tarefas, limite){
+  const res=new Array(tarefas.length); let prox=0;
+  async function trab(){ while(prox<tarefas.length){ const i=prox++; res[i]=await tarefas[i](); } }
+  await Promise.all(Array.from({length:Math.min(limite,tarefas.length)},trab));
+  return res;
+}
+async function montarPartes(P, tudoImagem){
+  const partes=[];
+  for(const pg of P.paginas){
+    if(!tudoImagem && pg.bom) partes.push({ n:pg.n, texto:pg.texto, imagens:[] });
+    else partes.push({ n:pg.n, texto:"", imagens:[await renderPagina(await P.pdf.getPage(pg.n))] });
+  }
+  return partes;
+}
+async function extrairPartes(lado, a, partes, total){
+  let feitas=0;
+  const docs = await emParalelo(partes.map(pt=>async()=>{
+    const j = await api({action:"extrair", tipo:lado, nome:a.nome, texto:pt.texto, imagens:pt.imagens, pagina:pt.n, paginas:total});
+    feitas++; a.modo = "IA lendo · "+feitas+" de "+partes.length+" página(s)"; listar(lado);
+    const d=j.doc; (d.itens||[]).forEach(it=>{ if(it.pagina==null) it.pagina=pt.n; }); return d;
+  }), PARALELO);
+  return mesclarPaginas(docs);
+}
+function mesclarPaginas(docs){
+  if(docs.length===1) return docs[0];
+  const prim = k => { for(const d of docs) if(d[k]!=null && d[k]!=="") return d[k]; return null; };
+  const out = {};
+  ["tipo_documento","numero","serie","data_emissao","chave_acesso","fornecedor_nome","fornecedor_cnpj",
+   "comprador_nome","pedido_referenciado","obra_ou_destino","qtd_itens_declarada"].forEach(k=>out[k]=prim(k));
+  out.itens = [].concat(...docs.map(d=>d.itens||[]));
+  out.totais = {};
+  ["valor_produtos","frete","seguro","desconto","ipi","icms_st","outras_despesas","valor_total"].forEach(k=>{
+    out.totais[k]=null; for(const d of docs){ const v=d.totais&&d.totais[k]; if(v!=null){ out.totais[k]=v; break; } } });
+  out.legibilidade = docs.some(d=>d.legibilidade==="ruim")?"ruim":docs.some(d=>d.legibilidade==="regular")?"regular":"boa";
+  out.alertas = [].concat(...docs.map((d,i)=>(d.alertas||[]).map(x=>"pág. "+(i+1)+": "+x)));
+  return out;
+}
+/* A leitura "fecha"? itens lidos somam o total de produtos do documento e
+   quantidade × unitário dá o total em cada linha. É isso que decide sozinho
+   se vale reler o PDF como imagem — não tem mais opção manual. */
+function notaLeitura(doc){
+  const it=normDoc(doc,"").itens;
+  if(!it.length) return {fecha:false, erro:Infinity, sus:0};
+  const soma=it.reduce((x,i)=>x+(i.vt||0),0), vp=num((doc.totais||{}).valor_produtos);
+  const erro = vp!=null ? Math.abs(soma-vp) : 0;
+  const sus = it.filter(i=>i.qtd!=null&&i.vu!=null&&i.vt!=null&&Math.abs(i.qtd*i.vu-i.vt)>Math.max(0.05,Math.abs(i.vt)*0.002)).length;
+  return { fecha: erro<=0.05 && sus===0, erro, sus };
+}
+function melhorLeitura(d1, d2){
+  const a=notaLeitura(d1), b=notaLeitura(d2);
+  if(a.fecha!==b.fecha) return a.fecha ? d1 : d2;
+  if(Math.abs(a.erro-b.erro)>0.05) return a.erro<b.erro ? d1 : d2;
+  return b.sus<a.sus ? d2 : d1;
+}
+
+async function lerArquivo(lado, a){
   a.estado="lendo"; a.erro=""; a.modo="abrindo…"; listar(lado);
   try{
-    let doc;
+    let doc, modo;
     if(a.tipo==="xml"){
-      a.modo="lendo XML"; listar(lado);
-      doc = lerXmlNFe(await a.file.text()); a.modo="XML (exato)";
+      doc = lerXmlNFe(await a.file.text()); modo="XML (exato)";
+    }else if(a.tipo==="img"){
+      a.modo="IA lendo a foto…"; listar(lado);
+      doc = await extrairPartes(lado, a, [{n:1, texto:"", imagens:[await lerImagem(a.file)]}], 1); modo="foto";
     }else{
-      let texto="", imagens=[], extra="";
-      if(a.tipo==="pdf"){
-        const r = await lerPdf(a.file, forcarImagem);
-        texto=r.texto; imagens=r.imagens;
-        if(r.total>r.lidas) extra=" · só as "+r.lidas+" primeiras de "+r.total+" páginas";
-        a.modo = (imagens.length && texto ? "texto + "+imagens.length+" pág. como imagem" : imagens.length ? imagens.length+" pág. como imagem" : "texto do PDF") + extra;
-      }else{
-        imagens=[await lerImagem(a.file)]; a.modo="foto";
+      const P = await lerPdf(a.file);
+      const nImg = P.paginas.filter(p=>!p.bom).length;
+      doc = await extrairPartes(lado, a, await montarPartes(P,false), P.lidas);
+      modo = nImg===P.lidas ? "PDF de imagem" : nImg ? "texto + "+nImg+" pág. de imagem" : "texto do PDF";
+      if(nImg<P.lidas && !notaLeitura(doc).fecha){
+        a.modo="leitura não fechou — relendo pela imagem…"; listar(lado);
+        const doc2 = await extrairPartes(lado, a, await montarPartes(P,true), P.lidas);
+        const melhor = melhorLeitura(doc, doc2);
+        if(melhor===doc2) modo="PDF relido pela imagem";
+        doc = melhor;
       }
-      const modo=a.modo; a.modo="IA lendo ("+modo+")…"; listar(lado);
-      const j = await api({action:"extrair", tipo:lado, nome:a.nome, texto, imagens});
-      doc = j.doc; a.modo = modo;
+      if(P.total>P.lidas) modo += " · só as "+P.lidas+" primeiras de "+P.total+" páginas";
     }
-    a.doc = normDoc(doc, a.nome); a.estado="ok";
+    a.doc = normDoc(doc, a.nome); a.estado="ok"; a.modo=modo;
   }catch(e){ a.estado="erro"; a.erro=e.message||String(e); a.doc=null; }
   listar(lado);
   return a;
@@ -719,21 +783,20 @@ function conferirLeitura(lado, nome){
 let R = null;          // { oc, nf, porOC, via, quando, id }
 let FILTRO = "todos";
 
-function tolerancia(){ const v=num($("tol").value); return v==null||v<0 ? 0.05 : v; }
+function tolerancia(){ const v=num($("tol").value); return v==null||v<0 ? 0 : v; }
 function progresso(t, erro){ const p=$("progresso"); p.textContent=t||""; p.className="progresso"+(erro?" err":""); }
 
 async function conferir(){
   if(!ARQ.OC.length || !ARQ.NF.length){ progresso("Coloque pelo menos um arquivo de cada lado: a ordem de compra e a nota fiscal.", true); return; }
   const b=$("b-conferir"); b.disabled=true;
   try{
-    const forcar=$("forcar-img").checked;
     const pend=[];
-    ["OC","NF"].forEach(l=>ARQ[l].forEach(a=>{ if(a.estado!=="ok") pend.push(lerArquivo(l,a,forcar)); }));
-    if(pend.length){ progresso("Lendo "+pend.length+" arquivo(s)… nota escaneada leva até um minuto."); await Promise.all(pend); }
+    ["OC","NF"].forEach(l=>ARQ[l].forEach(a=>{ if(a.estado!=="ok") pend.push(lerArquivo(l,a)); }));
+    if(pend.length){ progresso("Lendo "+pend.length+" arquivo(s)… cada página é lida separada; nota escaneada leva mais."); await Promise.all(pend); }
     const erros=[...ARQ.OC,...ARQ.NF].filter(a=>a.estado!=="ok");
     if(erros.length){ progresso("Não consegui ler: "+erros.map(a=>a.nome+" — "+a.erro).join(" · "), true); return; }
     const oc=juntar(ARQ.OC.map(a=>a.doc)), nf=juntar(ARQ.NF.map(a=>a.doc));
-    if(!oc.itens.length || !nf.itens.length){ progresso("Nenhum item encontrado em "+(!oc.itens.length?"OC":"NF")+". Tente \"ler como imagem\".", true); return; }
+    if(!oc.itens.length || !nf.itens.length){ progresso("Nenhum item encontrado em "+(!oc.itens.length?"OC":"NF")+". Confira se o arquivo é mesmo a "+(!oc.itens.length?"ordem de compra":"nota fiscal")+".", true); return; }
     progresso("Cruzando "+oc.itens.length+" itens da OC com "+nf.itens.length+" da NF…");
     const pr = await parear(oc,nf);
     R = { id:Date.now(), quando:hojeBR(), oc, nf, porOC:pr.porOC, via:pr.via, arquivos:{OC:ARQ.OC.map(a=>a.nome), NF:ARQ.NF.map(a=>a.nome)} };
@@ -914,9 +977,6 @@ document.addEventListener("click", e=>{
   const ch=e.target.closest("[data-filtro]"); if(ch){ FILTRO=ch.dataset.filtro; render(); return; }
   const t=e.target.closest("[data-tirar]");
   if(t){ const [l,id]=t.dataset.tirar.split(":"); ARQ[l]=ARQ[l].filter(a=>a.id!==+id); listar(l); return; }
-  const rf=e.target.closest("[data-refazer]");
-  if(rf){ const [l,id]=rf.dataset.refazer.split(":"); const a=ARQ[l].find(x=>x.id===+id);
-    if(a){ lerArquivo(l,a,true).then(()=>{ if(a.estado==="ok") toast("Lido de novo como imagem. Clique em Conferir."); }); } return; }
   const h=e.target.closest("[data-hist]"); if(h){ abrirHist(+h.dataset.hist); }
 });
 document.addEventListener("change", e=>{
@@ -1022,7 +1082,6 @@ $("b-hist-limpar").onclick=()=>{ localStorage.removeItem(HIST_KEY); pintarHist()
 });
 $("b-conferir").onclick=conferir;
 $("b-limpar").onclick=()=>{ ARQ.OC=[]; ARQ.NF=[]; listar("OC"); listar("NF"); R=null; render(); progresso(""); window.scrollTo({top:0,behavior:"smooth"}); };
-$("forcar-img").onchange=()=>{ ["OC","NF"].forEach(l=>ARQ[l].forEach(a=>{ if(a.tipo==="pdf"&&a.estado==="ok"){ a.estado="novo"; a.doc=null; } })); listar("OC"); listar("NF"); };
 
 /* ---------------- login (quando esta aba não tem a sessão do portal) ---------------- */
 const MSG_LOGIN = { LOGIN_NAO_ENCONTRADO:"Login não encontrado.", SENHA_INCORRETA:"Senha incorreta.",

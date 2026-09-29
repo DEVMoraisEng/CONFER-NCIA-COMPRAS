@@ -372,11 +372,13 @@ async function apiDireto(payload){
   for(let t=1; t<=3 && !j; t++){
     if(t>1) await new Promise(ok=>setTimeout(ok,ESPERA[t-1]));
     try{
-      const r = await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:corpo});
+      const ctl = new AbortController(), tempo = setTimeout(()=>ctl.abort(), 170000);   // 2 min 50 s
+      let r; try{ r = await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:corpo,signal:ctl.signal}); }
+      finally{ clearTimeout(tempo); }
       const txt = await r.text();
       try{ j = JSON.parse(txt); }
       catch(_){ ultimo = "o Google devolveu página de erro (HTTP "+r.status+") em vez da resposta do Apps Script"; }
-    }catch(_){ ultimo = "sem conexão com o Apps Script"; }
+    }catch(e){ ultimo = e && e.name==="AbortError" ? "o Apps Script não respondeu em 3 minutos" : "sem conexão com o Apps Script"; }
   }
   if(!j){ const e=new Error("Falhou 3 vezes — "+ultimo+"."); e.codigo="SEM_RESPOSTA"; throw e; }
   if(!j.ok){
@@ -1073,23 +1075,38 @@ let FILTRO = "todos";
 function tolerancia(){ const v=num($("tol").value); return v==null||v<0 ? 0 : v; }
 function progresso(t, erro){ const p=$("progresso"); p.textContent=t||""; p.className="progresso"+(erro?" err":""); }
 
+/* Cada clique em Conferir é uma "rodada". "Nova conferência" abre outra
+   rodada na hora: o botão volta a funcionar e o que a rodada antiga ainda
+   estiver lendo é descartado quando terminar. */
+let RODADA = 0;
+function botaoConferir(rodando){
+  const b=$("b-conferir");
+  if(!podeAcessar(S)){ b.disabled=true; b.textContent="Sem acesso"; return; }
+  b.disabled=!!rodando; b.textContent = rodando ? "Conferindo…" : "Conferir";
+}
 async function conferir(){
   if(!ARQ.OC.length || !ARQ.NF.length){ progresso("Coloque pelo menos um arquivo de cada lado: a ordem de compra e a nota fiscal.", true); return; }
-  const b=$("b-conferir"); b.disabled=true;
+  const minha = ++RODADA, atual = () => minha===RODADA;
+  botaoConferir(true);
   try{
+    /* A rodada trabalha só com os arquivos que estavam na tela quando o botão
+       foi clicado — trocar arquivos no meio não mistura com esta rodada. */
+    const meus = { OC: ARQ.OC.slice(), NF: ARQ.NF.slice() };
     const pend=[];
-    ["OC","NF"].forEach(l=>ARQ[l].forEach(a=>{ if(a.estado!=="ok") pend.push(lerArquivo(l,a)); }));
+    ["OC","NF"].forEach(l=>meus[l].forEach(a=>{ if(a.estado!=="ok") pend.push(lerArquivo(l,a)); }));
     if(pend.length){ progresso("Lendo "+pend.length+" arquivo(s)… cada página é lida separada; nota escaneada leva mais."); await Promise.all(pend); }
-    const erros=[...ARQ.OC,...ARQ.NF].filter(a=>a.estado!=="ok");
-    if(erros.length){ progresso("Não consegui ler: "+erros.map(a=>a.nome+" — "+a.erro).join(" · "), true); return; }
-    const oc=juntar(ARQ.OC.map(a=>a.doc)), nf=juntar(ARQ.NF.map(a=>a.doc));
+    if(!atual()) return;
+    const erros=[...meus.OC,...meus.NF].filter(a=>a.estado!=="ok");
+    if(erros.length){ progresso("Não consegui ler: "+erros.map(a=>a.nome+" — "+(a.erro||"a leitura não terminou, clique em Conferir de novo")).join(" · "), true); return; }
+    const oc=juntar(meus.OC.map(a=>a.doc)), nf=juntar(meus.NF.map(a=>a.doc));
     if(!oc.itens.length || !nf.itens.length){ progresso("Nenhum item encontrado em "+(!oc.itens.length?"OC":"NF")+". Confira se o arquivo é mesmo a "+(!oc.itens.length?"ordem de compra":"nota fiscal")+".", true); return; }
     progresso("Cruzando "+oc.itens.length+" itens da OC com "+nf.itens.length+" da NF…");
     const pr = await parear(oc,nf);
-    R = { id:Date.now(), quando:hojeBR(), oc, nf, porOC:pr.porOC, via:pr.via, arquivos:{OC:ARQ.OC.map(a=>a.nome), NF:ARQ.NF.map(a=>a.nome)} };
+    if(!atual()) return;
+    R = { id:Date.now(), quando:hojeBR(), oc, nf, porOC:pr.porOC, via:pr.via, arquivos:{OC:meus.OC.map(a=>a.nome), NF:meus.NF.map(a=>a.nome)} };
     progresso(""); FILTRO="todos"; render(true); salvarHist();
-  }catch(e){ progresso(e.message||String(e), true); }
-  finally{ b.disabled=false; }
+  }catch(e){ if(atual()) progresso(e.message||String(e), true); }
+  finally{ if(atual()) botaoConferir(false); }
 }
 
 async function parearDeNovo(){
@@ -1381,7 +1398,7 @@ $("b-hist-limpar").onclick=()=>{ localStorage.removeItem(HIST_KEY); pintarHist()
   z.ondrop=e=>{ e.preventDefault(); z.classList.remove("sobre"); adicionar(l, e.dataTransfer.files); };
 });
 $("b-conferir").onclick=conferir;
-$("b-limpar").onclick=()=>{ ARQ.OC=[]; ARQ.NF=[]; listar("OC"); listar("NF"); R=null; render(); progresso(""); window.scrollTo({top:0,behavior:"smooth"}); };
+$("b-limpar").onclick=()=>{ RODADA++; botaoConferir(false); ARQ.OC=[]; ARQ.NF=[]; listar("OC"); listar("NF"); R=null; render(); progresso(""); window.scrollTo({top:0,behavior:"smooth"}); };
 
 /* ---------------- login (quando esta aba não tem a sessão do portal) ---------------- */
 const MSG_LOGIN = { LOGIN_NAO_ENCONTRADO:"Login não encontrado.", SENHA_INCORRETA:"Senha incorreta.",
@@ -1409,7 +1426,7 @@ if(S){
   if(!podeAcessar(S)){
     const b=$("bloqueio"); b.classList.remove("esconde");
     b.textContent = "Seu login não tem o acesso \""+CHAVE+"\". Peça ao ADM para marcar essa opção na coluna ACESSOS do banco LOGINS.";
-    $("b-conferir").disabled = true;
+    botaoConferir(false);
   }
 }
 pintarHist();

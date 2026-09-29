@@ -116,12 +116,26 @@ main.wrap{padding:20px 20px 60px}
 .chip[aria-pressed=true]{background:var(--azul-esc);border-color:var(--azul-esc);color:#fff}
 .chip .n{opacity:.7;margin-left:4px}
 .espelho-box{overflow-x:auto;border:1px solid var(--border2);border-radius:10px;background:#fff}
-table.espelho{width:100%;border-collapse:collapse;font-size:12.8px;min-width:1080px}
-.espelho thead th{position:sticky;top:0;background:var(--bg2);font-size:10.5px;font-weight:800;color:var(--text3);text-align:left;padding:8px 7px;border-bottom:1px solid var(--border);white-space:nowrap}
-.espelho thead tr.grupo th{font-family:'Barlow Condensed';font-size:14px;color:var(--azul-esc);letter-spacing:.3px;border-bottom:0;padding-bottom:0}
-.espelho td{padding:8px 7px;border-bottom:1px solid var(--border2);vertical-align:top}
-.espelho td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.espelho td.meio{background:var(--bg2);border-left:1px solid var(--border2);border-right:1px solid var(--border2);width:210px}
+/* largura fixa por coluna: OC e NF ficam do mesmo tamanho e o seletor do meio
+   não empurra a tabela (select sem largura cresce até a maior opção) */
+table.espelho{width:100%;border-collapse:collapse;font-size:12.6px;min-width:1180px;table-layout:fixed}
+.espelho col.c-n{width:34px}.espelho col.c-un{width:44px}.espelho col.c-q{width:54px}
+.espelho col.c-vu{width:92px}.espelho col.c-vt{width:100px}.espelho col.c-meio{width:250px}
+.espelho th,.espelho td{border-left:1px solid var(--border2)}
+.espelho th:first-child,.espelho td:first-child{border-left:0}
+.espelho .lim{border-left:2px solid var(--azul)!important}
+.espelho thead th{position:sticky;top:0;background:var(--bg2);font-size:10.5px;font-weight:800;color:var(--text3);text-align:left;padding:8px 7px;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.espelho thead tr.grupo th{font-family:'Barlow Condensed';font-size:14.5px;color:var(--azul-esc);letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--border);padding:7px 9px}
+.espelho thead tr.grupo th.g-oc{background:#e3edf3}
+.espelho thead tr.grupo th.g-nf{background:#e2f1ee}
+.espelho thead tr.grupo th.g-meio{background:var(--bg3);text-align:center}
+.espelho td{padding:8px 7px;border-bottom:1px solid var(--border2);vertical-align:top;overflow-wrap:anywhere}
+.espelho td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;overflow-wrap:normal}
+.espelho th.num{text-align:right}
+.espelho td.meio{background:var(--bg2)}
+.espelho tbody tr:hover td{background:#f7fbfc}
+.espelho tbody tr:hover td.meio{background:#eef5f7}
+.espelho .extra{font-size:10.8px;color:var(--text3);margin-top:2px}
 .espelho tr.ok td:first-child{box-shadow:inset 4px 0 var(--ok)}
 .espelho tr.at td:first-child{box-shadow:inset 4px 0 #e0a800}
 .espelho tr.div td:first-child{box-shadow:inset 4px 0 var(--div)}
@@ -136,7 +150,7 @@ table.espelho{width:100%;border-collapse:collapse;font-size:12.8px;min-width:108
 .msgs li.div{color:var(--div);font-weight:600}.msgs li.at{color:var(--at)}.msgs li.info{color:var(--text3)}
 .imp{font-size:11.5px;font-weight:800;margin-top:4px}
 .imp.neg{color:var(--div)}.imp.pos{color:#9a4b00}
-.espelho select{max-width:100%;font:inherit;font-size:11.5px;padding:3px 5px;border:1px solid var(--border);border-radius:6px;margin-top:6px;background:#fff;color:var(--text)}
+.espelho select{width:100%;max-width:100%;font:inherit;font-size:11.5px;padding:3px 5px;border:1px solid var(--border);border-radius:6px;margin-top:6px;background:#fff;color:var(--text)}
 .nada{padding:22px;text-align:center;color:var(--text3)}
 
 /* itens lidos (editáveis) */
@@ -338,24 +352,33 @@ const MSG = {
   RESPOSTA_CORTADA: "O documento é grande demais para uma leitura. Separe as páginas em mais de um arquivo.",
   ARQUIVO_VAZIO: "Não consegui tirar nada do arquivo."
 };
+/* Fila: no máximo 2 chamadas ao Apps Script ao mesmo tempo, somando OC e NF.
+   Chamada demais de uma vez faz o Google devolver página de erro (404 do
+   Drive) em vez de rodar o script. */
+let API_ATIVAS = 0; const API_FILA = [];
+function apiVaga(){ return new Promise(ok=>{ if(API_ATIVAS<2){ API_ATIVAS++; ok(); } else API_FILA.push(ok); }); }
+function apiLibera(){ const prox=API_FILA.shift(); if(prox) prox(); else API_ATIVAS--; }
 async function api(payload){
+  await apiVaga();
+  try{ return await apiDireto(payload); } finally{ apiLibera(); }
+}
+async function apiDireto(payload){
   if(API.indexOf("COLE_AQUI")===0) throw new Error("Falta colar a URL do Apps Script em const API, no index.html.");
   const corpo = JSON.stringify(Object.assign({},payload,{token:S.token}));
   let j, ultimo = "";
-  /* Duas tentativas: o Google às vezes devolve página de erro (HTML) no lugar
-     da resposta — pico de uso ou execução derrubada. Na 2ª falha mostra o que
-     veio, para dar para diagnosticar pelo print. */
-  for(let t=1; t<=2 && !j; t++){
+  /* Três tentativas (espera 3 s e 8 s): o Google às vezes devolve página de
+     erro (HTML) no lugar da resposta. Na última mostra o que veio. */
+  const ESPERA=[0,3000,8000];
+  for(let t=1; t<=3 && !j; t++){
+    if(t>1) await new Promise(ok=>setTimeout(ok,ESPERA[t-1]));
     try{
       const r = await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:corpo});
       const txt = await r.text();
       try{ j = JSON.parse(txt); }
-      catch(_){ ultimo = "o servidor devolveu uma página de erro (HTTP "+r.status+"): "+
-        txt.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim().slice(0,180); }
+      catch(_){ ultimo = "o Google devolveu página de erro (HTTP "+r.status+") em vez da resposta do Apps Script"; }
     }catch(_){ ultimo = "sem conexão com o Apps Script"; }
-    if(!j && t===1) await new Promise(ok=>setTimeout(ok,2500));
   }
-  if(!j) throw new Error("Falhou duas vezes — "+ultimo);
+  if(!j){ const e=new Error("Falhou 3 vezes — "+ultimo+"."); e.codigo="SEM_RESPOSTA"; throw e; }
   if(!j.ok){
     if(j.erro==="SESSAO_INVALIDA"){ try{ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); }catch(_){} pedirLogin(MSG.SESSAO_INVALIDA); }
     const e=new Error(MSG[j.erro] || ("Erro do servidor: "+j.erro+(j.detalhe?" — "+j.detalhe:""))); e.codigo=j.erro; throw e; }
@@ -497,9 +520,15 @@ async function emParalelo(tarefas, limite){
   await Promise.all(Array.from({length:Math.min(limite,tarefas.length)},trab));
   return res;
 }
-async function montarPartes(P, tudoImagem){
+/* Página de NF com texto bom mas sem nada de nota (boleto, comprovante)
+   não gasta leitura de IA. */
+function paginaSemProduto(lado, pg){
+  return lado==="NF" && pg.bom && !/DANFE|PRODUTO|NF-?E\b|NOTA FISCAL|CHAVE DE ACESSO/i.test(pg.texto);
+}
+async function montarPartes(P, tudoImagem, lado){
   const partes=[];
   for(const pg of P.paginas){
+    if(paginaSemProduto(lado, pg) && P.paginas.some(x=>!paginaSemProduto(lado, x))) continue;
     if(!tudoImagem && pg.bom) partes.push({ n:pg.n, texto:pg.texto, imagens:[] });
     else partes.push({ n:pg.n, texto:"", imagens:[await renderPagina(await P.pdf.getPage(pg.n))] });
   }
@@ -507,10 +536,26 @@ async function montarPartes(P, tudoImagem){
 }
 async function extrairPartes(lado, a, partes, total){
   let feitas=0;
-  const docs = await emParalelo(partes.map(pt=>async()=>{
-    const j = await api({action:"extrair", tipo:lado, nome:a.nome, texto:pt.texto, imagens:pt.imagens, pagina:pt.n, paginas:total});
-    feitas++; a.modo = "IA lendo · "+feitas+" de "+partes.length+" página(s)"; listar(lado);
+  const ler = async (pt, texto, trecho) => {
+    const j = await api({action:"extrair", tipo:lado, nome:a.nome, texto, imagens:texto?[]:pt.imagens, pagina:pt.n, paginas:total, trecho});
     const d=j.doc; (d.itens||[]).forEach(it=>{ if(it.pagina==null) it.pagina=pt.n; }); return d;
+  };
+  const docs = await emParalelo(partes.map(pt=>async()=>{
+    let d;
+    try{ d = await ler(pt, pt.texto, ""); }
+    catch(e){
+      /* Página cheia (40+ itens) pode passar do tempo do Google. Se for texto,
+         lê em duas metades — cada uma bem mais rápida — e junta. */
+      const linhas = (pt.texto||"").split("\n");
+      if(e.codigo!=="SEM_RESPOSTA" || linhas.length<30) throw e;
+      a.modo="página "+pt.n+" grande — lendo em duas partes…"; listar(lado);
+      const meio=Math.ceil(linhas.length/2);
+      const d1 = await ler(pt, linhas.slice(0,meio).join("\n"), "1 de 2");
+      const d2 = await ler(pt, linhas.slice(meio).join("\n"), "2 de 2");
+      d = mesclarPaginas([d1,d2]);
+    }
+    feitas++; a.modo = "IA lendo · "+feitas+" de "+partes.length+" página(s)"; listar(lado);
+    return d;
   }), PARALELO);
   return mesclarPaginas(docs);
 }
@@ -558,11 +603,11 @@ async function lerArquivo(lado, a){
     }else{
       const P = await lerPdf(a.file);
       const nImg = P.paginas.filter(p=>!p.bom).length;
-      doc = await extrairPartes(lado, a, await montarPartes(P,false), P.lidas);
+      doc = await extrairPartes(lado, a, await montarPartes(P,false,lado), P.lidas);
       modo = nImg===P.lidas ? "PDF de imagem" : nImg ? "texto + "+nImg+" pág. de imagem" : "texto do PDF";
       if(nImg<P.lidas && !notaLeitura(doc).fecha){
         a.modo="leitura não fechou — relendo pela imagem…"; listar(lado);
-        const doc2 = await extrairPartes(lado, a, await montarPartes(P,true), P.lidas);
+        const doc2 = await extrairPartes(lado, a, await montarPartes(P,true,lado), P.lidas);
         const melhor = melhorLeitura(doc, doc2);
         if(melhor===doc2) modo="PDF relido pela imagem";
         doc = melhor;
@@ -576,12 +621,22 @@ async function lerArquivo(lado, a){
 }
 
 /* ===================== NORMALIZAÇÃO E JUNÇÃO ===================== */
+/* Separa da descrição o que é da linha de baixo da DANFE (Marca, Cód. Fab.,
+   Ref.) e os "|" que vêm do texto do PDF. Fica o nome do produto limpo e o
+   resto aparece pequeno embaixo. */
+function limparDescricao(d){
+  const partes = String(d||"").split(/\s*\|\s*|\s+(?=(?:MARCA|C[OÓ]D\.?\s*F[AÁ]B|REF\.?)\s*[:.])/i).map(x=>x.trim()).filter(Boolean);
+  const extra = partes.filter(x=>/^(MARCA|C[OÓ]D\.?\s*F[AÁ]B|REF\.?)\s*[:.]?/i.test(x));
+  const nome = partes.filter(x=>extra.indexOf(x)<0).join(" ");
+  return { nome: nome || String(d||"").trim(), extra: extra.join(" · ") };
+}
 function normDoc(doc, origem){
   const itens = (doc.itens||[]).map(it=>{
+    const ld = limparDescricao(it.descricao);
     let q=num(it.quantidade), u=num(it.valor_unitario), t=num(it.valor_total);
     if(t==null && q!=null && u!=null) t=r2(q*u);
     if(u==null && t!=null && q) u=t/q;
-    return { codigo:(it.codigo||"").toString().trim(), descricao:(it.descricao||"").trim(), unidade:(it.unidade||"").trim(),
+    return { codigo:(it.codigo||"").toString().trim(), descricao:ld.nome, extra:ld.extra, unidade:(it.unidade||"").trim(),
       qtd:q, vu:u, vt:t, desc:num(it.valor_desconto), ipi:num(it.valor_ipi), origem, pagina:it.pagina==null?null:it.pagina };
   });
   const T = doc.totais||{}, totais={};
@@ -1173,11 +1228,14 @@ function tabelaEspelho(C){
   if(!vis.length) return `<div class="nada">Nenhum item neste filtro.</div>`;
   const dQ = l => l.o && l.qNc!=null && l.o.qtd!=null && Math.abs(l.qNc-l.o.qtd)>1e-6;
   const dU = l => l.o && l.uNc!=null && l.o.vu!=null && !precoIgual(l.uNc,l.o.vu);
-  return `<table class="espelho"><thead>
-    <tr class="grupo"><th colspan="6">Ordem de compra</th><th></th><th colspan="5">Nota fiscal</th></tr>
-    <tr><th>#</th><th>Produto</th><th>Un</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unitário</th><th style="text-align:right">Total</th>
-        <th>Situação</th>
-        <th>Produto</th><th>Un</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unitário</th><th style="text-align:right">Total</th></tr></thead><tbody>
+  return `<table class="espelho">
+    <colgroup><col class="c-n"><col><col class="c-un"><col class="c-q"><col class="c-vu"><col class="c-vt">
+      <col class="c-meio"><col><col class="c-un"><col class="c-q"><col class="c-vu"><col class="c-vt"></colgroup>
+    <thead>
+    <tr class="grupo"><th colspan="6" class="g-oc">Ordem de compra</th><th class="g-meio lim">Situação</th><th colspan="5" class="g-nf lim">Nota fiscal</th></tr>
+    <tr><th>#</th><th>Produto</th><th>Un</th><th class="num">Qtd</th><th class="num">Unitário</th><th class="num">Total</th>
+        <th class="lim">Resultado / item da NF</th>
+        <th class="lim">Produto</th><th>Un</th><th class="num">Qtd</th><th class="num">Unitário</th><th class="num">Total</th></tr></thead><tbody>
   ${vis.map(l=>{
     const o=l.o, n=l.ns[0];
     const tag = l.tipo==="faltando" ? `<span class="tag div">Faltando na NF</span>`
@@ -1189,16 +1247,16 @@ function tabelaEspelho(C){
       ? `<select data-ligar="${l.nIdx[0]}" aria-label="Ligar a um item da OC">${opcoesOC(l.nIdx[0])}</select>`
       : `<select data-trocar="${l.io}" aria-label="Item da NF correspondente">${opcoesNF(l.nIdx, l.io)}</select>`;
     const ladoOC = o ? `<td class="num">${l.io+1}</td>
-        <td><div class="desc">${esc(o.descricao)}</div>${o.codigo?`<div class="cod">cód. ${esc(o.codigo)}</div>`:""}</td>
+        <td><div class="desc">${esc(o.descricao)}</div>${o.extra?`<div class="extra">${esc(o.extra)}</div>`:""}${o.codigo?`<div class="cod">cód. ${esc(o.codigo)}</div>`:""}</td>
         <td>${esc(o.unidade)}</td><td class="num">${fq(o.qtd)}</td><td class="num">${brlU(o.vu)}</td><td class="num">${brl(o.vt)}</td>`
       : `<td></td><td colspan="5" class="vazio">não consta na ordem de compra</td>`;
-    const ladoNF = l.ns.length ? `<td><div class="desc">${l.ns.map(x=>esc(x.descricao)).join("<br>")}</div>${l.ns[0].codigo?`<div class="cod">cód. ${l.ns.map(x=>esc(x.codigo)).join(", ")}</div>`:""}</td>
+    const ladoNF = l.ns.length ? `<td class="lim"><div class="desc">${l.ns.map(x=>esc(x.descricao)).join("<br>")}</div>${l.ns.some(x=>x.extra)?`<div class="extra">${l.ns.map(x=>esc(x.extra)).filter(Boolean).join(" · ")}</div>`:""}${l.ns[0].codigo?`<div class="cod">cód. ${l.ns.map(x=>esc(x.codigo)).join(", ")}</div>`:""}</td>
         <td>${esc(n.unidade)}</td>
         <td class="num ${dQ(l)?"difere":""}">${l.ns.length>1?fq(l.ns.reduce((a,x)=>a+(x.qtd||0),0)):fq(n.qtd)}</td>
         <td class="num ${dU(l)?"difere":""}">${l.ns.length>1?brlU(l.uNc):brlU(n.vu)}</td>
         <td class="num">${brl(l.ns.length>1?l.tN:n.vt)}</td>`
-      : `<td colspan="5" class="vazio">não veio na nota</td>`;
-    return `<tr class="${l.st}">${ladoOC}<td class="meio">${tag}${imp}${msgs}${seletor}</td>${ladoNF}</tr>`;
+      : `<td colspan="5" class="vazio lim">não veio na nota</td>`;
+    return `<tr class="${l.st}">${ladoOC}<td class="meio lim">${tag}${imp}${msgs}${seletor}</td>${ladoNF}</tr>`;
   }).join("")}
   </tbody></table>`;
 }

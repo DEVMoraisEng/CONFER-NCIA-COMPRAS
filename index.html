@@ -415,11 +415,15 @@ function lerXmlNFe(txt){
   const infCpl = tx(um(inf,"infAdic"),"infCpl") || "";
   if(!pedido){ const m = infCpl.match(/(?:pedido|ped\.?|o\.?\s?c\.?|ordem de compra)\D{0,12}(\d[\d\/.-]{1,20})/i); if(m) pedido=m[1]; }
   const cnpj = tx(emit,"CNPJ") || tx(emit,"CPF");
+  const ent = um(inf,"entrega");
+  const local = ent ? [tx(ent,"xLgr"),tx(ent,"nro"),tx(ent,"xCpl"),tx(ent,"xBairro"),tx(ent,"xMun")].filter(Boolean).join(", ")
+                    : ((infCpl.match(/(?:DADOS ENTREGA|ENTREGAR|LOCAL DE ENTREGA)[^|]{0,160}/i)||[""])[0] || null);
   return {
     tipo_documento:"NOTA_FISCAL", numero:tx(ide,"nNF"), serie:tx(ide,"serie"),
     data_emissao:(tx(ide,"dhEmi")||tx(ide,"dEmi")||"").slice(0,10).split("-").reverse().join("/")||null,
     chave_acesso:(inf.getAttribute("Id")||"").replace(/^NFe/,"")||null,
     fornecedor_nome:tx(emit,"xNome"), fornecedor_cnpj:cnpj, comprador_nome:tx(dest,"xNome"),
+    comprador_cnpj:tx(dest,"CNPJ")||tx(dest,"CPF"), local_entrega:local,
     pedido_referenciado:pedido, obra_ou_destino:null, itens,
     totais:{ valor_produtos:num(tx(tot,"vProd")), frete:num(tx(tot,"vFrete")), seguro:num(tx(tot,"vSeg")),
       desconto:num(tx(tot,"vDesc")), ipi:num(tx(tot,"vIPI")), icms_st:num(tx(tot,"vST")),
@@ -515,7 +519,7 @@ function mesclarPaginas(docs){
   const prim = k => { for(const d of docs) if(d[k]!=null && d[k]!=="") return d[k]; return null; };
   const out = {};
   ["tipo_documento","numero","serie","data_emissao","chave_acesso","fornecedor_nome","fornecedor_cnpj",
-   "comprador_nome","pedido_referenciado","obra_ou_destino","qtd_itens_declarada"].forEach(k=>out[k]=prim(k));
+   "comprador_nome","comprador_cnpj","local_entrega","pedido_referenciado","obra_ou_destino","qtd_itens_declarada"].forEach(k=>out[k]=prim(k));
   out.itens = [].concat(...docs.map(d=>d.itens||[]));
   out.totais = {};
   ["valor_produtos","frete","seguro","desconto","ipi","icms_st","outras_despesas","valor_total"].forEach(k=>{
@@ -596,7 +600,7 @@ function juntar(docs){
   const todos = k => docs.map(d=>d[k]).filter(Boolean).join(", ") || null;
   lado.numero = todos("numero"); lado.serie=todos("serie"); lado.data=todos("data_emissao");
   lado.chave = todos("chave_acesso"); lado.fornecedor=prim("fornecedor_nome"); lado.cnpj=prim("fornecedor_cnpj");
-  lado.comprador=prim("comprador_nome"); lado.pedido=todos("pedido_referenciado"); lado.obra=prim("obra_ou_destino");
+  lado.comprador=prim("comprador_nome"); lado.compradorDoc=prim("comprador_cnpj"); lado.entrega=prim("local_entrega"); lado.pedido=todos("pedido_referenciado"); lado.obra=prim("obra_ou_destino");
   const dec = docs.map(d=>d.qtd_itens_declarada).filter(v=>v!=null);
   lado.qtdDeclarada = dec.length===docs.length ? dec.reduce((a,b)=>a+b,0) : null;
   lado.legibilidade = docs.some(d=>d.legibilidade==="ruim") ? "ruim" : docs.some(d=>d.legibilidade==="regular") ? "regular" : "boa";
@@ -609,35 +613,116 @@ function totalLado(lado){
   return r2(somaItens(lado)+(t.frete||0)+(t.seguro||0)+(t.ipi||0)+(t.icms_st||0)+(t.outras_despesas||0)-(t.desconto||0));
 }
 
-/* ===================== PAREAMENTO ===================== */
-const PARADAS = new Set("DE DA DO DAS DOS COM PARA EM E A O P/ C/ S/ UN UND UNID PC PCT CX SC KG M M2 M3 MT LT L GL BD RL TB PAR JG CJ".split(" "));
-function tokens(s){
-  return nz(s).replace(/(\d),(\d)/g,"$1.$2").replace(/(\d)([A-Z])/g,"$1 $2").replace(/([A-Z])(\d)/g,"$1 $2").split(/[^A-Z0-9.\/"]+/).map(t=>t.replace(/^\.+|\.+$/g,"")).filter(t=>t && (t.length>1 || /\d/.test(t)) && !PARADAS.has(t));
+/* ===================== CASAMENTO OC × NF =====================
+ * O fornecedor escreve o mesmo insumo do jeito dele ("CX GORD SIF 250X172X50MM
+ * RD BR" = "CAIXA DE GORDURA SIFONADA - 250 X 172 X 50mm"). Por isso o nome
+ * NÃO precisa bater: a nota junta palavras (com abreviação e prefixo), medidas
+ * e — forte — quantidade e preço. Ordem de tentativa:
+ *   1. de-para aprendido (correções à mão feitas antes com esse fornecedor)
+ *   2. código igual
+ *   3. nota ≥ 0,75 (descrição + medidas + valores)
+ *   4. IA só com o que sobrou (listas pequenas, rápido)
+ *   5. valor total igual e único
+ *   6. se a IA falhou: nota ≥ 0,5, marcado "Conferir"
+ * Testado com a OC 7658 × NF 66577 (Zênite): 53 dos 54 itens casam no passo 3
+ * sem erro, mesmo simulando preço 7% diferente em todos. */
+const SINON = { TB:"TUBO", TE:"TEE", CX:"CAIXA", CXA:"CAIXA", JLH:"JOELHO", JOE:"JOELHO", LV:"LUVA",
+  REG:"REGISTRO", CONEX:"CONEXAO", ADAPT:"ADAPTADOR", ADAP:"ADAPTADOR", PT:"PRETO", PTO:"PRETO", BR:"BRANCO", BCO:"BRANCO",
+  AZ:"AZUL", VM:"VERMELHO", VERM:"VERMELHO", VD:"VERDE", VER:"VERDE", AM:"AMARELO",
+  QD:"QUADRADA", QUAD:"QUADRADA", RD:"REDONDA", RED:"REDUCAO", REDUC:"REDUCAO", SIF:"SIFONADA", SOLD:"SOLDAVEL",
+  ESG:"ESGOTO", ESGT:"ESGOTO", ROSC:"ROSCAVEL", ROSQ:"ROSCAVEL", ROSCA:"ROSCAVEL", TORN:"TORNEIRA", PARAF:"PARAFUSO",
+  ELETROD:"ELETRODUTO", CORRUG:"CORRUGADO", FLEX:"FLEXIVEL", FLEXICOM:"FLEXIVEL", EXTENSIVO:"FLEXIVEL",
+  DISJ:"DISJUNTOR", INTERR:"INTERRUPTOR", INTER:"INTERRUPTOR", TCL:"TECLA", TECLAS:"TECLA",
+  UNIPOLAR:"MONOFASICO", MONOPOLAR:"MONOFASICO", MONOFASCO:"MONOFASICO", DIFERENCIAL:"DR",
+  ARG:"ARGAMASSA", CIM:"CIMENTO", VERG:"VERGALHAO", TIJ:"TIJOLO", PORC:"PORCELANATO", REJ:"REJUNTE",
+  GORD:"GORDURA", VENT:"VENTILACAO", TERM:"TERMINAL", JUNC:"JUNCAO", ACAB:"ACABAMENTO",
+  PIA:"COZINHA", MESA:"BANCADA", VASO:"BACIA", PLACA:"TAMPA", PREGOS:"PREGO", PROLONGAMENTO:"PROLONGADOR" };
+/* não dizem qual é o produto: unidades, preposições, marcas e fabricantes comuns */
+const RUIDO = new Set(("DE DA DO DAS DOS COM PARA POR EM E OU A O AS OS NO NA UN UND UNID UNIDADES PC PCS PCT KG G GR MM CM M MT MTS "+
+  "L LT LTS LITRO LITROS ML X POL PVC PL DN NBR MARCA COD FAB REF TIPO MOD MODELO LINHA PEQUENA GRANDE MEDIA NOVO NOVA "+
+  "PREDIAL EXTRA STANDART STANDARD MULTIUSO LAM BORB MAIS DURO PRIMEIRA SIMILAR SIMILIAR "+
+  "KRONA TIGRE AMANCO FORTLEV DOCOL DECA PLASTUBOS MULTILIT VIQUA KOHLS BRAGIONI GRAP CORTAG LORENZETTI "+
+  "VOTORAN VOTORANTIM QUARTZOLIT SUVINIL CORAL GERDAU ARCELOR TRAMONTINA PIAL FAME ASTRA HERC "+
+  "PLASTILIT SOCEL PEVESUL CASTOR TUBOSAN METALSUL LUCONI REBOUCAS TECBOND BAKOF BLUKIT ONIX GOFIX UNIPEGA "+
+  "AJRORATO SOPRANO COBRECOM CORFIO SIL PLUZIE IDEALE EMBRASTEC DECORLUX AVANT TAF PARAMAX TRIANGULO STAM "+
+  "FAMASTIL UNIFIO EMM REUE ECOBOX GALAXIA SLYM GOLD MAKITA STARRET IMPERATRIZ LOGASA").split(" "));
+const CORES = new Set("AZUL VERMELHO VERDE PRETO BRANCO AMARELO CINZA MARROM LARANJA ROXO ROSA BEGE".split(" "));
+const CACHE_T = new Map();
+function termos(s){
+  const k=String(s||""); if(CACHE_T.has(k)) return CACHE_T.get(k);
+  const t = nz(k)
+    .replace(/\b[CSP]\//g," ")                           // C/ANEL, P/CX, S/TAMPA
+    .replace(/(\d)\s*(''|"|POL\b)/g,"$1")                 // 3/4" -> 3/4
+    .replace(/(\d),(\d)/g,"$1.$2")                         // 2,50 -> 2.50
+    .replace(/(\d)\s*(MM|CM|M)[23²³]/g,"$1$2")              // 2,5MM2 / 6M3 -> 2.5MM
+    .replace(/(\d)\s*X\s*(?=\d)/g,"$1 ")                    // 100X50 -> 100 50
+    .replace(/(\d)([A-Z])/g,"$1 $2").replace(/([A-Z])(\d)/g,"$1 $2");
+  const out = { pal:[], num:[] };
+  t.split(/[^A-Z0-9.\/]+/).forEach(w=>{
+    w = w.replace(/^[.\/]+|[.\/]+$/g,"");
+    if(!w) return;
+    if(/\d/.test(w)){
+      if(/^\d{4,}$/.test(w) || (w.match(/\./g)||[]).length>1) return;   // código de modelo/fábrica
+      const n = /^[\d.]+$/.test(w) ? String(Number(w)) : w;              // 2.50 = 2.5, 02 = 2
+      out.num.push(n); return;
+    }
+    if(w.length<2) return;
+    const c = SINON[w] || w;
+    if(RUIDO.has(c)) return;
+    out.pal.push(c);
+  });
+  out.pal=[...new Set(out.pal)]; out.num=[...new Set(out.num)];
+  CACHE_T.set(k,out); return out;
 }
-function similaridade(o,n){
-  if(o.codigo && n.codigo && nz(o.codigo)===nz(n.codigo)) return 1;
-  const A=new Set(tokens(o.descricao)), B=new Set(tokens(n.descricao));
-  if(!A.size||!B.size) return 0;
-  let inter=0; A.forEach(t=>{ if(B.has(t)) inter++; });
-  let s = inter/Math.min(A.size,B.size)*0.7 + inter/new Set([...A,...B]).size*0.3;
-  const numA=[...A].filter(t=>/\d/.test(t)), numB=[...B].filter(t=>/\d/.test(t));
-  if(numA.length && numB.length && !numA.some(t=>B.has(t))) s*=0.45;     // medidas diferentes: 50 × 75
-  if(o.vu && n.vu && Math.abs(n.vu-o.vu)/o.vu < 0.03) s+=0.12;
-  if(o.qtd!=null && n.qtd!=null && o.qtd===n.qtd) s+=0.06;
-  return s;
+function bigramas(w){ const b=[]; for(let i=0;i<w.length-1;i++) b.push(w.slice(i,i+2)); return b; }
+function palIgual(a,b){
+  if(a===b) return 1;
+  const [c,l] = a.length<b.length ? [a,b] : [b,a];
+  if(c.length>=3 && l.indexOf(c)===0) return 0.85;       // SOLD/SOLDAVEL, TORN/TORNEIRA
+  if(c.length>=5){
+    let i=0; while(i<c.length && c[i]===l[i]) i++;
+    if(i>=5 && i>=0.7*c.length) return 0.8;                // ACOPLAR/ACOPLADA, PARALELA/PARALELO
+    const A=bigramas(a), B=bigramas(b); let com=0; const usados=B.slice();
+    A.forEach(x=>{ const j=usados.indexOf(x); if(j>=0){ com++; usados.splice(j,1); } });
+    if(2*com/(A.length+B.length)>=0.8) return 0.75;       // erro de digitação: PORCEANATO/PORCELANATO
+  }
+  return 0;
 }
-function parearLocal(oc, nf){
-  const cand=[];
-  oc.itens.forEach((o,io)=>nf.itens.forEach((n,k)=>{ const s=similaridade(o,n); if(s>=0.3) cand.push({io,k,s}); }));
-  cand.sort((a,b)=>b.s-a.s);
-  const usOC=new Set(), usNF=new Set(), pares=[];
-  for(const c of cand){ if(usOC.has(c.io)||usNF.has(c.k)) continue; usOC.add(c.io); usNF.add(c.k);
-    pares.push({oc:c.io, nf:c.k, confianca:c.s>=0.75?"alta":c.s>=0.5?"media":"baixa", fator_conversao:null, motivo:"pareado pela descrição"}); }
-  return pares;
+function simPal(A,B){
+  if(!A.length||!B.length) return 0;
+  const [P,G] = A.length<=B.length ? [A,B] : [B,A];
+  let soma=0; P.forEach(p=>{ let m=0; G.forEach(g=>{ m=Math.max(m,palIgual(p,g)); }); soma+=m; });
+  return 0.6*(soma/P.length) + 0.4*(soma/(A.length+B.length-soma));
 }
+function simNum(A,B){
+  if(!A.length && !B.length) return {s:0.5, conflito:false};
+  if(!A.length || !B.length) return {s:0.3, conflito:false};
+  const com = A.filter(x=>B.indexOf(x)>=0).length;
+  return { s: com/Math.max(A.length,B.length), conflito: com===0 };
+}
+const perto=(a,b,p)=>a!=null&&b!=null&&b!==0&&Math.abs(a-b)<=Math.max(0.005,Math.abs(b)*p);
+/* código igual só SOMA: o código da OC é nosso e o da NF é do fornecedor —
+   podem coincidir por acaso (115 × 115) sem ser o mesmo produto. */
+const mesmoCodigo=(o,n)=>!!(o.codigo && n.codigo && nz(o.codigo)===nz(n.codigo));
+function nota(o,n){
+  const to=termos(o.descricao), tn=termos(n.descricao);
+  const nm = simNum(to.num,tn.num), sp = simPal(to.pal,tn.pal);
+  let d = 0.65*sp + 0.35*nm.s*Math.min(1, sp*2);               // medida só ajuda se o nome já parece
+  if(nm.conflito) d *= 0.45;                                   // 50 mm × 75 mm: provavelmente outro produto
+  const cO=to.pal.filter(w=>CORES.has(w)), cN=tn.pal.filter(w=>CORES.has(w));
+  if(cO.length && cN.length && !cO.some(w=>cN.indexOf(w)>=0)) d *= 0.5;   // cabo azul × cabo verde
+  let v = 0;
+  if(o.vt>0 && perto(n.vt,o.vt,0)) v = perto(n.qtd,o.qtd,0) ? 0.45 : 0.3;
+  else if(perto(n.vu,o.vu,0.02) && perto(n.qtd,o.qtd,0)) v = 0.3;
+  else if(perto(n.vu,o.vu,0.01)) v = 0.15;
+  else if(perto(n.qtd,o.qtd,0)) v = 0.05;
+  return d + v + (mesmoCodigo(o,n) ? 0.4 : 0);
+}
+function chaveDesc(s){ return nz(s).replace(/[^A-Z0-9]+/g," ").trim(); }
+
 const ORDEM_CONF = {alta:3, media:2, baixa:1, manual:4};
 function montarPares(pares, nOC, nNF){
-  const porOC = Array.from({length:nOC},()=>({nf:[], conf:null, fator:null, motivo:""}));
+  const porOC = Array.from({length:nOC},()=>({nf:[], conf:null, fator:null, motivo:"", fonte:""}));
   const usado = new Set();
   (pares||[]).forEach(p=>{
     if(p.oc==null||p.nf==null) return;
@@ -647,23 +732,125 @@ function montarPares(pares, nOC, nNF){
     if(!o.conf || ORDEM_CONF[p.confianca]<ORDEM_CONF[o.conf]) o.conf=p.confianca;
     if(p.fator_conversao && p.fator_conversao>0) o.fator=p.fator_conversao;
     if(!o.motivo) o.motivo=p.motivo||"";
+    if(!o.fonte) o.fonte=p.fonte||"";
   });
   return porOC;
 }
+
 async function parear(oc, nf){
-  const lista = l => l.itens.map(it=>({i:it.i, codigo:it.codigo, descricao:it.descricao, unidade:it.unidade, qtd:it.qtd, vu:it.vu, vt:it.vt}));
-  try{
-    const j = await api({action:"parear", oc:lista(oc), nf:lista(nf)});
-    return { porOC: montarPares(j.pares, oc.itens.length, nf.itens.length), via:"IA" };
-  }catch(e){
-    if(e.codigo==="SESSAO_INVALIDA"||e.codigo==="SEM_ACESSO") throw e;
-    return { porOC: montarPares(parearLocal(oc,nf), oc.itens.length, nf.itens.length), via:"descrição (a IA não respondeu: "+e.message+")" };
+  const nO=oc.itens.length, nN=nf.itens.length;
+  const pares=[], usO=new Set(), usN=new Set();
+  const cont={depara:0, codigo:0, descricao:0, ia:0, valor:0, aprox:0};
+  const add=(io,k,conf,motivo,fonte,fator)=>{ pares.push({oc:io,nf:k,confianca:conf,fator_conversao:fator||null,motivo,fonte}); usO.add(io); usN.add(k); cont[fonte]++; };
+  const livresO=()=>oc.itens.map((_,i)=>i).filter(i=>!usO.has(i));
+  const livresN=()=>nf.itens.map((_,k)=>k).filter(k=>!usN.has(k));
+  let obsIA="";
+
+  // 1. de-para aprendido com esse fornecedor
+  const cnpj=soDig(nf.cnpj);
+  if(cnpj){
+    try{
+      const j=await api({action:"depara_buscar", cnpj});
+      (j.pares||[]).forEach(e=>{
+        livresN().forEach(k=>{
+          const n=nf.itens[k];
+          if(!((e.nf_cod && nz(n.codigo)===nz(e.nf_cod)) || (!e.nf_cod && chaveDesc(n.descricao)===e.nf_desc))) return;
+          const io = oc.itens.findIndex(o=>(e.oc_cod && nz(o.codigo)===nz(e.oc_cod)) || chaveDesc(o.descricao)===e.oc_desc);
+          if(io<0) return;
+          pares.push({oc:io,nf:k,confianca:"alta",fator_conversao:e.fator||null,motivo:"de-para aprendido",fonte:"depara"});
+          usO.add(io); usN.add(k); cont.depara++;
+        });
+      });
+    }catch(e){ if(e.codigo==="SESSAO_INVALIDA"||e.codigo==="SEM_ACESSO") throw e; }
   }
+
+  // 2 e 3. código igual / descrição + medidas + valores
+  const cand=[];
+  livresO().forEach(io=>livresN().forEach(k=>{ const s=nota(oc.itens[io],nf.itens[k]); if(s>=0.5) cand.push({io,k,s}); }));
+  cand.sort((a,b)=>b.s-a.s);
+  for(const c of cand){
+    if(c.s<0.75) break;
+    if(usO.has(c.io)||usN.has(c.k)) continue;
+    if(mesmoCodigo(oc.itens[c.io],nf.itens[c.k])) add(c.io,c.k,"alta","código igual","codigo");
+    else add(c.io,c.k,c.s>=0.9?"alta":"media","descrição e valores","descricao");
+  }
+
+  // 4. IA só com o que sobrou
+  let iaOk=true;
+  const sobraO=livresO(), sobraN=livresN();
+  if(sobraO.length && sobraN.length){
+    const lista=(l,idx)=>idx.map(i=>{ const it=l.itens[i]; return {i, codigo:it.codigo, descricao:it.descricao, unidade:it.unidade, qtd:it.qtd, vu:it.vu, vt:it.vt}; });
+    const exemplos = pares.filter(p=>p.fonte!=="depara").slice(0,8).map(p=>({oc:oc.itens[p.oc].descricao, nf:nf.itens[p.nf].descricao}));
+    const blocos=[]; for(let x=0;x<sobraO.length;x+=20) blocos.push(sobraO.slice(x,x+20));
+    try{
+      const res = await emParalelo(blocos.map(b=>()=>api({action:"parear", oc:lista(oc,b), nf:lista(nf,sobraN), exemplos})), PARALELO);
+      const props=[];
+      res.forEach(j=>(j.pares||[]).forEach(p=>{ if(p.oc!=null&&p.nf!=null) props.push(p); }));
+      props.sort((a,b)=>ORDEM_CONF[b.confianca]-ORDEM_CONF[a.confianca]);
+      props.forEach(p=>{
+        const io=+p.oc, k=+p.nf;
+        if(sobraO.indexOf(io)<0 || sobraN.indexOf(k)<0 || usN.has(k)) return;
+        pares.push({oc:io,nf:k,confianca:p.confianca,fator_conversao:p.fator_conversao,motivo:p.motivo||"",fonte:"ia"});
+        usO.add(io); usN.add(k); cont.ia++;
+      });
+    }catch(e){
+      if(e.codigo==="SESSAO_INVALIDA"||e.codigo==="SEM_ACESSO") throw e;
+      iaOk=false; obsIA=" (a IA não respondeu: "+e.message+")";
+    }
+  }
+
+  // 5. valor total igual e único dos dois lados
+  livresO().forEach(io=>{
+    const o=oc.itens[io]; if(!(o.vt>0)) return;
+    const ks=livresN().filter(k=>perto(nf.itens[k].vt,o.vt,0));
+    if(ks.length!==1) return;
+    const outros=livresO().filter(j=>perto(oc.itens[j].vt,o.vt,0));
+    if(outros.length!==1) return;
+    add(io,ks[0],"media","mesmo valor total ("+brl(o.vt)+")","valor");
+  });
+
+  // 6. IA fora do ar: aproximação pela descrição, marcada para conferir
+  if(!iaOk){
+    for(const c of cand){
+      if(usO.has(c.io)||usN.has(c.k)) continue;
+      add(c.io,c.k,c.s>=0.6?"media":"baixa","nome parecido","aprox");
+    }
+  }
+
+  const partes=[];
+  if(cont.depara) partes.push(cont.depara+" pelo de-para aprendido");
+  if(cont.codigo) partes.push(cont.codigo+" pelo código");
+  if(cont.descricao) partes.push(cont.descricao+" pela descrição e valores");
+  if(cont.ia) partes.push(cont.ia+" pela IA");
+  if(cont.valor) partes.push(cont.valor+" pelo valor total");
+  if(cont.aprox) partes.push(cont.aprox+" por nome parecido");
+  return { porOC: montarPares(pares, nO, nN), via: (partes.join(" · ")||"nenhum item casado")+obsIA };
+}
+
+/* Correção à mão vira de-para do fornecedor (planilha do Apps Script):
+   na próxima nota dele esse item casa sozinho. */
+function salvarDePara(io, k, remover){
+  if(!R || io==null || k==null) return;
+  const cnpj=soDig(R.nf.cnpj); if(!cnpj) return;
+  const o=R.oc.itens[io], n=R.nf.itens[k];
+  api({action:"depara_salvar", cnpj, fornecedor:R.nf.fornecedor||"", pares:[{
+    nf_cod:n.codigo||"", nf_desc:chaveDesc(n.descricao), oc_cod:o.codigo||"", oc_desc:chaveDesc(o.descricao),
+    fator:(R.porOC[io]&&R.porOC[io].fator)||null, remover:!!remover }]})
+    .then(()=>{ if(!remover) toast("Guardado: na próxima nota desse fornecedor esse item casa sozinho."); })
+    .catch(()=>{});
+}
+function sugestoes(item, lado){          // outros itens do lado oposto, do mais parecido ao menos
+  const outros = lado==="nf" ? R.nf.itens : R.oc.itens;
+  return outros.map((x,i)=>({i, s: lado==="nf" ? nota(item,x) : nota(x,item)})).sort((a,b)=>b.s-a.s);
 }
 
 /* ===================== COMPARAÇÃO ===================== */
-const UNI = {"UN":"UN","UND":"UN","UNID":"UN","UNIDADE":"UN","PC":"UN","PÇ":"UN","PCA":"UN","PECA":"UN","M":"M","MT":"M","METRO":"M","ML":"M","KG":"KG","KGS":"KG","SC":"SC","SACO":"SC","CX":"CX","CAIXA":"CX","LT":"L","L":"L","LITRO":"L","M2":"M2","M²":"M2","M3":"M3","M³":"M3","BR":"BR","BARRA":"BR","BD":"BD","BALDE":"BD","GL":"GL","GALAO":"GL","RL":"RL","ROLO":"RL","PCT":"PCT","PACOTE":"PCT","TB":"TB","TUBO":"TB","PAR":"PAR","JG":"JG","CJ":"CJ","MIL":"MIL","MILHEIRO":"MIL","TON":"T","T":"T"};
-const uniN = u => { const x=nz(u).replace(/[.\s]/g,""); return UNI[x]||x; };
+const UNI = {"UN":"UN","UND":"UN","UNID":"UN","UNIDADE":"UN","PC":"UN","PÇ":"UN","PCA":"UN","PECA":"UN","M":"M","MT":"M","METRO":"M","ML":"M","KG":"KG","KGS":"KG","SC":"SC","SACO":"SC","CX":"CX","CAIXA":"CX","LT":"L","L":"L","LITRO":"L","M2":"M2","M²":"M2","M3":"M3","M³":"M3","BR":"BR","BARRA":"BR","BD":"BD","BALDE":"BD","GL":"GL","GALAO":"GL","RL":"RL","ROLO":"RL","PCT":"PCT","PACOTE":"PCT","PT":"PCT","PCTE":"PCT","CT":"CT","CARTELA":"CT","CARTUCHO":"UN","GALÃO":"GL","TB":"TB","TUBO":"TB","PAR":"PAR","JG":"JG","CJ":"CJ","MIL":"MIL","MILHEIRO":"MIL","TON":"T","T":"T"};
+const uniN = u => { const x=nz(u).split(/[\s(]/)[0].replace(/[.]/g,""); return UNI[x]||x; };
+/* Unidades "de contar": tubo em BR, caixa d'água em CX, cabo em RL e pacote em PT
+   na nota contra UN na OC é o normal — 1 barra = 1 un. Só alerta se a
+   quantidade também não bater (aí pode ser conversão). */
+const CONTAVEIS = new Set(["UN","BR","CX","RL","PCT","CT","CJ","JG","PAR","TB","GL","BD","SC"]);
 const precoIgual = (a,b) => Math.abs(a-b) <= Math.max(0.01, Math.abs(b)*0.0005);
 
 function comparar(oc, nf, porOC, tol){
@@ -689,7 +876,11 @@ function comparar(oc, nf, porOC, tol){
 
     const uO=uniN(o.unidade), uN=uniN(ns[0].unidade);
     if(p.fator && f!==1) msgs.push({c:"info", t:"Convertido: 1 "+(o.unidade||"un")+" da OC = "+fq(f)+" "+(ns[0].unidade||"un")+" da NF"});
-    else if(uO && uN && uO!==uN){ msgs.push({c:"at", t:"Unidade diferente: OC em "+o.unidade+", NF em "+ns[0].unidade+" — confira a conversão"}); sobe("at"); }
+    else if(uO && uN && uO!==uN){
+      const qtdBate = o.qtd!=null && qN!=null && Math.abs(qN-o.qtd)<1e-6;
+      if(CONTAVEIS.has(uO) && CONTAVEIS.has(uN) && qtdBate) msgs.push({c:"info", t:"OC em "+o.unidade+", NF em "+ns[0].unidade});
+      else { msgs.push({c:"at", t:"Unidade diferente: OC em "+o.unidade+", NF em "+ns[0].unidade+" — confira a conversão"}); sobe("at"); }
+    }
 
     if(o.qtd!=null && qNc!=null && Math.abs(qNc-o.qtd) > Math.max(1e-6, Math.abs(o.qtd)*1e-6)){
       const dq=qNc-o.qtd; cq = dq*(o.vu||0); sobe("div");
@@ -705,7 +896,13 @@ function comparar(oc, nf, porOC, tol){
         sobe("div"); msgs.push({c:"div", t:"Preço "+(du>0?"maior":"menor")+": OC "+brlU(o.vu)+" · NF "+brlU(uNc)+" ("+(du>0?"+":"−")+brlU(Math.abs(du))+" por "+(o.unidade||"un")+")"});
       }
     }
-    if(p.conf==="baixa"){ sobe("at"); msgs.push({c:"at", t:"Pareamento incerto — confira se é o mesmo produto"+(p.motivo?" ("+p.motivo+")":"")}); }
+    const md = medidaDiferente(o, ns);
+    if(md){ sobe("at"); msgs.push({c:"at", t:"Medida diferente — OC: "+md.oc+" · NF: "+md.nf+". Confira tamanho/bitola/embalagem."}); }
+    if(p.conf==="baixa"){ sobe("at"); msgs.push({c:"at", t:"Casamento incerto — confira se é o mesmo produto"+(p.motivo?" ("+p.motivo+")":"")}); }
+    else if(p.fonte==="ia" && p.conf!=="alta") msgs.push({c:"info", t:"Casado pela IA: "+(p.motivo||"produto equivalente")});
+    else if(p.fonte==="valor") msgs.push({c:"info", t:"Casado pelo "+p.motivo+" — nomes diferentes"});
+    else if(p.fonte==="depara") msgs.push({c:"info", t:"Casado pelo de-para aprendido"});
+    else if(p.conf==="manual") msgs.push({c:"info", t:"Escolhido à mão"});
     if(ns.length>1) msgs.push({c:"info", t:"Na nota veio em "+ns.length+" linhas (somadas aqui)"});
     const impacto = (tN||0)-(o.vt||0);
     comp.qtd+=cq; comp.preco+=cp;
@@ -738,19 +935,54 @@ function comparar(oc, nf, porOC, tol){
            nAt: linhas.filter(l=>l.st==="at").length + cab.filter(c=>c.st==="at").length };
 }
 
+/* Casado, mas com número de medida que não bate dos dois lados
+   (pediu fita 50 m, veio 25 m; torneira 1/2 e veio 3/4). Número só de um
+   lado (a NF detalha mais) não conta. */
+function medidaDiferente(o, ns){
+  const A = termos(o.descricao).num, B = [...new Set([].concat(...ns.map(n=>termos(n.descricao).num)))];
+  if(!A.length || !B.length) return null;
+  const soOC = A.filter(x=>B.indexOf(x)<0), soNF = B.filter(x=>A.indexOf(x)<0);
+  if(!soOC.length || !soNF.length) return null;
+  return { oc: soOC.join(", "), nf: soNF.join(", ") };
+}
+function quadraLote(t){
+  const s=nz(t||""); const q=s.match(/\bQ(?:D|UADRA)\.?\s*(\d+)/), l=s.match(/\bL(?:T|OTE)\.?\s*(\d+)/);
+  return q && l ? "QD "+Number(q[1])+" LT "+Number(l[1]) : null;
+}
 function cabecalho(oc, nf){
   const c=[];
   const cOC=soDig(oc.cnpj), cNF=soDig(nf.cnpj);
   c.push({lab:"Fornecedor", oc:oc.fornecedor, nf:nf.fornecedor, st:""});
-  c.push({lab:"CNPJ do fornecedor", oc:oc.cnpj, nf:nf.cnpj,
-          st: cOC && cNF && cOC!==cNF ? "div" : "", msg: cOC && cNF && cOC!==cNF ? "CNPJ da nota é diferente do fornecedor da OC" : ""});
+  let stC="", msgC="";
+  if(cOC && cNF && cOC!==cNF){
+    const raiz = x => (termos(x||"").pal.filter(w=>["LTDA","ME","EPP","EIRELI","SA","DISTRIBUIDORA","MATERIAIS","MATERIAL","CONSTRUCAO","COMERCIO","ATACADISTA","INDUSTRIA"].indexOf(w)<0)[0]||"");
+    const mesmoNome = raiz(oc.fornecedor) && raiz(oc.fornecedor)===raiz(nf.fornecedor);
+    stC = mesmoNome ? "at" : "div";
+    msgC = mesmoNome ? "A nota saiu por outro CNPJ ("+nf.cnpj+") do que está na OC ("+oc.cnpj+"). Parece a mesma empresa/grupo — confirme se pode."
+                     : "CNPJ da nota ("+nf.cnpj+") é de outro fornecedor, não o da OC ("+oc.cnpj+").";
+  }
+  c.push({lab:"CNPJ do fornecedor", oc:oc.cnpj, nf:nf.cnpj, st:stC, msg:msgC});
   const nOC=soDig(oc.numero), ped=soDig(nf.pedido);
   c.push({lab:"Número", oc:oc.numero, nf:(nf.numero||"")+(nf.serie?" · série "+nf.serie:""), st:""});
   c.push({lab:"Pedido citado na NF", oc:"", nf:nf.pedido,
           st: nOC && ped && ped.indexOf(nOC)<0 && nOC.indexOf(ped)<0 ? "at" : "",
           msg: nOC && ped && ped.indexOf(nOC)<0 && nOC.indexOf(ped)<0 ? "A nota cita o pedido "+nf.pedido+", a OC é "+oc.numero : ""});
   c.push({lab:"Data", oc:oc.data, nf:nf.data, st:""});
-  if(oc.obra) c.push({lab:"Obra / destino", oc:oc.obra, nf:"", st:""});
+
+  // a nota tem que sair para a empresa/SPE da OC
+  const dOC=soDig(oc.compradorDoc), dNF=soDig(nf.compradorDoc);
+  const difDest = dOC && dNF && dOC!==dNF;
+  c.push({lab:"Faturado para", oc:[oc.comprador,oc.compradorDoc].filter(Boolean).join(" · "), nf:[nf.comprador,nf.compradorDoc].filter(Boolean).join(" · "),
+          st: difDest ? "div" : "",
+          msg: difDest ? (dNF.length===11 ? "A nota foi faturada para um CPF ("+nf.compradorDoc+"), não para a empresa da OC ("+oc.compradorDoc+")."
+                                          : "A nota foi faturada para outro CNPJ ("+nf.compradorDoc+" · "+(nf.comprador||"")+"), a OC é de "+(oc.comprador||"")+" ("+oc.compradorDoc+").") : ""});
+
+  // local de entrega: compara quadra e lote quando os dois lados trazem
+  const qlOC = quadraLote((oc.entrega||"")+" "+(oc.obra||"")), qlNF = quadraLote(nf.entrega);
+  const difLocal = qlOC && qlNF && qlOC!==qlNF;
+  if(oc.obra||oc.entrega||nf.entrega)
+    c.push({lab:"Obra / entrega", oc:[oc.obra,oc.entrega].filter(Boolean).join(" · "), nf:nf.entrega||"",
+            st: difLocal ? "at" : "", msg: difLocal ? "Entrega na nota em "+qlNF+", a OC é para "+qlOC+"." : ""});
   if(nf.chave) c.push({lab:"Chave de acesso", oc:"", nf:nf.chave, st:""});
   c.push({lab:"Quantidade de itens", oc:String(oc.itens.length), nf:String(nf.itens.length), st: oc.itens.length!==nf.itens.length ? "at":"",
           msg: oc.itens.length!==nf.itens.length ? "A OC tem "+oc.itens.length+" itens e a NF "+nf.itens.length : ""});
@@ -871,7 +1103,7 @@ function render(rolar){
       ${chips.map(([k,t])=>`<button class="chip" type="button" data-filtro="${k}" aria-pressed="${FILTRO===k}">${t}<span class="n">${cnt[k]}</span></button>`).join("")}
     </div>
     <div class="espelho-box">${tabelaEspelho(C)}</div>
-    <p class="nota">Pareamento pela ${esc(R.via)}. Se a IA juntou errado, troque no seletor da linha — a conta refaz na hora.
+    <p class="nota">Casamento dos itens: ${esc(R.via)}. Se algum casou errado, troque no seletor da linha — a conta refaz na hora e a correção fica guardada para as próximas notas desse fornecedor.
       <button class="btn sec2 peq" type="button" id="b-repar">Cruzar de novo com a IA</button></p>
     <details class="lidos"><summary>Itens lidos dos documentos (dá para corrigir um valor lido errado)</summary>
       <div class="lidos-grid">
@@ -922,13 +1154,19 @@ function passaFiltro(l){
     default: return true;
   }
 }
-function opcoesNF(sel){
-  return `<option value="">— não veio na NF —</option>` + R.nf.itens.map((n,k)=>
-    `<option value="${k}" ${sel.indexOf(k)>=0?"selected":""}>NF ${k+1}. ${esc(n.descricao.slice(0,60))}</option>`).join("");
+function opcoesNF(sel, io){
+  const lista = sugestoes(R.oc.itens[io],"nf");
+  const opt = x => `<option value="${x.i}" ${sel.indexOf(x.i)>=0?"selected":""}>NF ${x.i+1}. ${esc(R.nf.itens[x.i].descricao.slice(0,60))}</option>`;
+  return `<option value="">— não veio na NF —</option>
+    <optgroup label="Mais parecidos">${lista.slice(0,5).map(opt).join("")}</optgroup>
+    <optgroup label="Todos da NF">${lista.slice(5).sort((a,b)=>a.i-b.i).map(opt).join("")}</optgroup>`;
 }
-function opcoesOC(){
-  return `<option value="">— ligar a um item da OC —</option>` + R.oc.itens.map((o,i)=>
-    `<option value="${i}">OC ${i+1}. ${esc(o.descricao.slice(0,60))}</option>`).join("");
+function opcoesOC(k){
+  const lista = sugestoes(R.nf.itens[k],"oc");
+  const opt = x => `<option value="${x.i}">OC ${x.i+1}. ${esc(R.oc.itens[x.i].descricao.slice(0,60))}</option>`;
+  return `<option value="">— ligar a um item da OC —</option>
+    <optgroup label="Mais parecidos">${lista.slice(0,5).map(opt).join("")}</optgroup>
+    <optgroup label="Todos da OC">${lista.slice(5).sort((a,b)=>a.i-b.i).map(opt).join("")}</optgroup>`;
 }
 function tabelaEspelho(C){
   const vis = C.linhas.filter(passaFiltro);
@@ -948,8 +1186,8 @@ function tabelaEspelho(C){
     const imp = Math.abs(l.impacto)>=0.005 ? `<div class="imp ${l.impacto<0?"neg":"pos"}">${sinalBrl(r2(l.impacto))}</div>` : "";
     const msgs = l.msgs.length ? `<ul class="msgs">${l.msgs.map(m=>`<li class="${m.c}">${esc(m.t)}</li>`).join("")}</ul>` : "";
     const seletor = l.tipo==="extra"
-      ? `<select data-ligar="${l.nIdx[0]}" aria-label="Ligar a um item da OC">${opcoesOC()}</select>`
-      : `<select data-trocar="${l.io}" aria-label="Item da NF correspondente">${opcoesNF(l.nIdx)}</select>`;
+      ? `<select data-ligar="${l.nIdx[0]}" aria-label="Ligar a um item da OC">${opcoesOC(l.nIdx[0])}</select>`
+      : `<select data-trocar="${l.io}" aria-label="Item da NF correspondente">${opcoesNF(l.nIdx, l.io)}</select>`;
     const ladoOC = o ? `<td class="num">${l.io+1}</td>
         <td><div class="desc">${esc(o.descricao)}</div>${o.codigo?`<div class="cod">cód. ${esc(o.codigo)}</div>`:""}</td>
         <td>${esc(o.unidade)}</td><td class="num">${fq(o.qtd)}</td><td class="num">${brlU(o.vu)}</td><td class="num">${brl(o.vt)}</td>`
@@ -983,13 +1221,17 @@ document.addEventListener("change", e=>{
   const s=e.target;
   if(s.dataset.trocar!=null){
     const io=+s.dataset.trocar, k=s.value===""?null:+s.value;
+    const antes=R.porOC[io]||{nf:[]};
+    if(k==null && antes.fonte==="depara") antes.nf.forEach(x=>salvarDePara(io,x,true));   // de-para errado: esquece
     if(k!=null) R.porOC.forEach(p=>{ p.nf=p.nf.filter(x=>x!==k); });
-    R.porOC[io] = { nf: k==null?[]:[k], conf: k==null?null:"manual", fator:null, motivo:"escolhido à mão" };
+    R.porOC[io] = { nf: k==null?[]:[k], conf: k==null?null:"manual", fator:null, motivo:"escolhido à mão", fonte:"manual" };
+    if(k!=null) salvarDePara(io,k,false);
     render(); salvarHist(); return;
   }
   if(s.dataset.ligar!=null && s.value!==""){
     const k=+s.dataset.ligar, io=+s.value, p=R.porOC[io];
-    if(p.nf.indexOf(k)<0) p.nf.push(k); p.conf="manual"; p.motivo="escolhido à mão";
+    if(p.nf.indexOf(k)<0) p.nf.push(k); p.conf="manual"; p.motivo="escolhido à mão"; p.fonte="manual";
+    salvarDePara(io,k,false);
     render(); salvarHist(); return;
   }
   if(s.dataset.edit){
